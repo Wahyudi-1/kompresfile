@@ -3,385 +3,1347 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SmartDoc Compressor & Uploader</title>
+  <title>SmartDoc Studio Pro: Kompres, Pilih Halaman, TTD & Riwayat</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Library PDF.js & jsPDF untuk memproses PDF di Browser -->
+  <!-- Library PDF.js & jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- Supabase SDK (Opsional jika ingin langsung ke Supabase) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-slate-100 min-h-screen py-8 px-4 font-sans text-slate-800">
 
-  <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-200">
-    <!-- Header -->
-    <div class="bg-indigo-600 p-6 text-white">
-      <h1 class="text-2xl font-bold">Pengumpulan & Kompresi Dokumen Otomatis</h1>
-      <p class="text-indigo-100 text-sm mt-1">Deteksi otomatis Gambar & PDF dengan penyesuaian target ukuran file tanpa mengubah isi.</p>
-    </div>
-
-    <form id="uploadForm" class="p-6 space-y-5">
-      <!-- Data Pengirim -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="max-w-6xl mx-auto space-y-6">
+    
+    <!-- HEADER & NAVIGASI 4 TAB UTAMA -->
+    <div class="bg-white rounded-2xl shadow-md overflow-hidden border border-slate-200">
+      <div class="bg-indigo-600 p-6 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <label class="block text-sm font-semibold mb-1">Nama Lengkap *</label>
-          <input type="text" id="nama" required placeholder="Masukkan nama..." class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+          <h1 class="text-2xl font-bold">SmartDoc Studio Pro</h1>
+          <p class="text-indigo-100 text-sm mt-1">Kompresi Gambar & PDF, Pilih/Hapus Halaman, Tanda Tangan Digital, Penggabung PDF & Riwayat Cloud.</p>
         </div>
-        <div>
-          <label class="block text-sm font-semibold mb-1">Kategori / Keterangan *</label>
-          <input type="text" id="keterangan" required placeholder="Misal: Berkas Pendaftaran" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+        <div class="bg-indigo-700/70 px-4 py-2 rounded-xl border border-indigo-400/30 text-right shrink-0">
+          <span class="text-xs text-indigo-200 block">Status Antrean Berkas</span>
+          <span id="readyCountBadge" class="text-lg font-extrabold text-white">0 / 0 Siap</span>
         </div>
       </div>
 
-      <!-- Dropzone File -->
-      <div>
-        <label class="block text-sm font-semibold mb-1">Pilih File (Gambar JPG/PNG atau PDF) *</label>
-        <div class="border-2 border-dashed border-indigo-300 rounded-xl p-6 text-center bg-indigo-50/40 hover:bg-indigo-50 transition cursor-pointer" onclick="document.getElementById('fileInput').click()">
-          <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden" required>
-          <p class="text-indigo-600 font-medium" id="dropText">Klik untuk memilih file Gambar atau PDF</p>
-          <p class="text-xs text-slate-500 mt-1">Sistem akan otomatis mendeteksi jenis file Anda</p>
-        </div>
+      <!-- 4 TAB MENU MODE KERJA -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 bg-slate-100 p-1.5 gap-1.5 border-b border-slate-200">
+        <button type="button" onclick="switchMode('local')" id="tab_local" class="py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 bg-white text-indigo-700 shadow-sm">
+          <span>📥</span> 1. Kompres & Unduh
+        </button>
+        <button type="button" onclick="switchMode('merge')" id="tab_merge" class="py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-white/60">
+          <span>📑</span> 2. Gabung PDF / Gambar
+        </button>
+        <button type="button" onclick="switchMode('cloud')" id="tab_cloud" class="py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-white/60">
+          <span>☁️</span> 3. Simpan ke Drive
+        </button>
+        <button type="button" onclick="switchMode('history')" id="tab_history" class="py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-white/60">
+          <span>🔍</span> 4. Riwayat Kompresi
+        </button>
       </div>
 
-      <!-- Panel Deteksi & Pilihan Rentang Ukuran (Muncul Otomatis) -->
-      <div id="compressionPanel" class="hidden bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+      <!-- =============================================================== -->
+      <!-- WORKSPACE UTAMA (UNTUK TAB 1, 2, DAN 3)                         -->
+      <!-- =============================================================== -->
+      <div id="workspaceArea" class="p-6 space-y-6">
+        
+        <!-- INFO BANNER -->
+        <div id="modeBanner" class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-start gap-3">
+          <span class="text-lg">🔒</span>
+          <div id="modeBannerText">
+            <b>Mode Mandiri Aktif (Tanpa Server / Google Drive):</b> Seluruh pemrosesan halaman, tanda tangan, dan kompresi berjalan di browser Anda.
+          </div>
+        </div>
+
+        <!-- FORM IDENTITAS & KODE AKSES (MUNCUL DI TAB 3: CLOUD DRIVE) -->
+        <div id="cloudIdentitySection" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 bg-indigo-50/60 p-4 rounded-xl border border-indigo-200">
           <div>
-            <span id="fileTypeBadge" class="px-2.5 py-1 text-xs font-bold uppercase rounded-full bg-indigo-100 text-indigo-700">Mendeteksi...</span>
-            <p id="fileNameDisplay" class="text-sm font-medium text-slate-700 mt-1 truncate max-w-xs"></p>
+            <label class="block text-xs font-bold uppercase text-indigo-900 mb-1">Nama Lengkap Pengirim *</label>
+            <input type="text" id="nama" placeholder="Contoh: Budi Santoso" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-sm">
           </div>
-          <div class="text-right">
-            <span class="text-xs text-slate-500 block">Ukuran Asli</span>
-            <span id="originalSizeDisplay" class="text-base font-bold text-slate-800">0 KB</span>
+          <div>
+            <label class="block text-xs font-bold uppercase text-indigo-900 mb-1">Keperluan / Kategori Berkas *</label>
+            <input type="text" id="keterangan" placeholder="Contoh: Berkas Pendaftaran" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-indigo-900 mb-1">Kode Kompresi (Untuk Riwayat) *</label>
+            <div class="flex gap-1.5">
+              <input type="text" id="kodeKompresi" class="w-full px-3 py-2 border border-indigo-300 rounded-lg font-mono font-bold text-indigo-700 bg-white text-sm uppercase" placeholder="DOC-XXXXXX">
+              <button type="button" onclick="generateNewAccessCode()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shrink-0" title="Acak Kode Baru">
+                🔄 Acak
+              </button>
+            </div>
+            <span class="text-[11px] text-slate-500">Simpan kode ini untuk membuka file di menu Riwayat.</span>
           </div>
         </div>
 
-        <!-- Pilihan Rentang Ukuran Target -->
-        <div>
-          <label class="block text-sm font-semibold mb-2">Pilih Target Ukuran File Hasil Kompresi:</label>
-          <div id="sizeOptionsContainer" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <!-- Opsi di-generate otomatis oleh JS sesuai jenis file -->
+        <!-- PANEL TANDA TANGAN DIGITAL (OPSIONAL UNTUK SEMUA DOKUMEN) -->
+        <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+          <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-100 transition" onclick="toggleSignaturePanel()">
+            <div class="flex items-center gap-3">
+              <input type="checkbox" id="enableSignature" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" onclick="event.stopPropagation(); toggleSignaturePanel(true);">
+              <div>
+                <h3 class="text-sm font-bold text-slate-800">✍️ Tambahkan Tanda Tangan Digital pada Dokumen (Opsional)</h3>
+                <p class="text-xs text-slate-500">Gambar tanda tangan langsung di layar atau unggah PNG transparan untuk ditempel otomatis ke PDF/Gambar.</p>
+              </div>
+            </div>
+            <span id="sigStatusBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-200 text-slate-600">Nonaktif</span>
+          </div>
+
+          <div id="signatureConfigBody" class="hidden p-4 border-t border-slate-200 bg-white grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Kanvas Gambar Tanda Tangan -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-700 uppercase">Goreskan Tanda Tangan di Sini:</label>
+                <div class="flex gap-2">
+                  <button type="button" onclick="clearSignatureCanvas()" class="px-2.5 py-1 text-xs bg-slate-100 hover:bg-red-100 text-slate-700 hover:text-red-700 rounded font-semibold transition">
+                    🗑️ Bersihkan Kanvas
+                  </button>
+                  <label class="px-2.5 py-1 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded font-semibold cursor-pointer transition">
+                    📁 Upload PNG TTD
+                    <input type="file" id="sigUploadInput" accept="image/png,image/jpeg" class="hidden">
+                  </label>
+                </div>
+              </div>
+              <div class="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 overflow-hidden relative">
+                <canvas id="signaturePad" width="460" height="150" class="w-full h-[150px] cursor-crosshair touch-none"></canvas>
+              </div>
+              <p class="text-[11px] text-slate-400">Mendukung mouse, touchpad, maupun S-Pen / Stylus layar sentuh.</p>
+            </div>
+
+            <!-- Pengaturan Posisi & Label Nama TTD -->
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Posisi Tanda Tangan di Dokumen:</label>
+                <select id="sigPosition" class="w-full px-3 py-2 text-xs font-semibold border border-slate-300 rounded-lg bg-white">
+                  <option value="bottom-right" selected>Kanan Bawah (Standar Dokumen Resmi)</option>
+                  <option value="bottom-left">Kiri Bawah</option>
+                  <option value="bottom-center">Tengah Bawah</option>
+                </select>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Diterapkan Pada Halaman PDF:</label>
+                  <select id="sigTargetPage" class="w-full px-3 py-2 text-xs font-semibold border border-slate-300 rounded-lg bg-white">
+                    <option value="last" selected>Hanya Halaman Terakhir</option>
+                    <option value="first">Hanya Halaman Pertama</option>
+                    <option value="all">Semua Halaman</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Ukuran Proporsi TTD:</label>
+                  <select id="sigScaleSize" class="w-full px-3 py-2 text-xs font-semibold border border-slate-300 rounded-lg bg-white">
+                    <option value="0.16">Kecil (16% Lebar Halaman)</option>
+                    <option value="0.22" selected>Sedang (22% Lebar Halaman)</option>
+                    <option value="0.30">Besar (30% Lebar Halaman)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Nama Terang / Jabatan di Bawah TTD (Opsional):</label>
+                <input type="text" id="sigSignerName" placeholder="Contoh: Budi Santoso, S.Pd." class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg">
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Tombol Uji Kompresi & Hasil -->
-        <div class="flex items-center justify-between pt-2">
-          <button type="button" id="btnCompress" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-lg transition">
-            Proses Kompresi Sekarang
+        <!-- PANEL PENGATURAN KHUSUS MODE GABUNG PDF (MERGE) -->
+        <div id="mergeSettingsSection" class="hidden bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-3">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 class="font-bold text-amber-950 text-sm">Pengaturan Penggabungan Dokumen (PDF Merger)</h3>
+              <p class="text-xs text-amber-800">Anda juga bisa memilih halaman tertentu pada masing-masing PDF di bawah sebelum digabung menjadi 1 file.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <input type="text" id="mergedFileName" value="Dokumen_Gabungan" placeholder="Nama file gabungan..." class="px-3 py-2 text-xs font-semibold border border-amber-300 rounded-lg bg-white outline-none">
+              <select id="mergedTargetQuality" class="px-3 py-2 text-xs font-bold border border-amber-300 rounded-lg bg-white outline-none">
+                <option value="low">Ukuran Ringan (~100 KB / hal)</option>
+                <option value="medium" selected>Ukuran Standar (~220 KB / hal)</option>
+                <option value="high">Resolusi Tajam (~450 KB / hal)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- DROPZONE MULTI-FILE -->
+        <div class="border-2 border-dashed border-indigo-300 rounded-2xl p-7 text-center bg-indigo-50/30 hover:bg-indigo-50/70 transition cursor-pointer" onclick="document.getElementById('fileInput').click()">
+          <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden">
+          <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <p class="text-indigo-700 font-bold text-base">Klik untuk memilih File PDF atau Gambar</p>
+          <p class="text-xs text-slate-500 mt-1">Otomatis mendeteksi jumlah halaman PDF agar Anda bisa memilih/menghapus halaman tertentu</p>
+        </div>
+
+        <!-- ACTION BAR MASSAL -->
+        <div id="batchActionBar" class="hidden flex flex-wrap items-center justify-between gap-3 bg-slate-800 text-white p-4 rounded-xl">
+          <div class="text-sm">
+            <span class="font-bold" id="totalFilesText">0 File</span> dalam daftar.
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" id="btnCompressAll" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold rounded-lg shadow transition">
+              ⚡ Proses & Kompres Semua File
+            </button>
+            <button type="button" id="btnMergeNow" class="hidden px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs sm:text-sm font-extrabold rounded-lg shadow transition">
+              📑 Gabung Halaman Terpilih Jadi 1 PDF
+            </button>
+            <button type="button" id="btnClearAll" class="px-3 py-2 bg-slate-700 hover:bg-red-600 text-slate-200 hover:text-white text-xs sm:text-sm font-semibold rounded-lg transition">
+              Bersihkan Daftar
+            </button>
+          </div>
+        </div>
+
+        <!-- DAFTAR KARTU FILE ANTREAN -->
+        <div id="fileListContainer" class="space-y-3"></div>
+
+        <!-- HASIL PENGGABUNGAN PDF -->
+        <div id="mergedResultCard" class="hidden p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-500 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span class="px-2.5 py-0.5 text-[11px] font-extrabold uppercase rounded-full bg-emerald-200 text-emerald-900">PDF Gabungan Selesai</span>
+              <h4 id="mergedResultTitle" class="text-base font-extrabold text-slate-900 mt-1">Dokumen_Gabungan.pdf</h4>
+              <p id="mergedResultMeta" class="text-xs text-slate-600 mt-0.5">Total Halaman: 0 | Ukuran Akhir: 0 KB</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" onclick="openMergedPreview()" class="px-4 py-2.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-xs font-bold rounded-xl transition">
+                👁️ Preview PDF Gabungan
+              </button>
+              <button type="button" onclick="downloadMergedPdf()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition">
+                ⬇️ Unduh PDF Gabungan
+              </button>
+              <button type="button" onclick="uploadMergedToCloud()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition">
+                ☁️ Simpan ke Google Drive
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOMBOL AKSI UTAMA DI BAWAH -->
+        <div id="bottomActionArea" class="pt-2">
+          <button type="button" id="btnDownloadAllLocal" disabled class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-md transition text-base">
+            ⬇️ Unduh Semua File Terkompresi ke Perangkat (0 File)
           </button>
-          <div id="compressedResultBox" class="hidden text-right">
-            <span class="text-xs text-emerald-600 font-semibold block">Ukuran Setelah Kompresi:</span>
-            <span id="compressedSizeDisplay" class="text-lg font-extrabold text-emerald-600">0 KB</span>
-          </div>
+
+          <button type="button" id="btnSubmitCloud" disabled class="hidden w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-md transition text-base">
+            ☁️ Kirim Semua Dokumen ke Google Drive (0 File)
+          </button>
         </div>
 
-        <!-- Progress Bar untuk PDF -->
-        <div id="progressContainer" class="hidden">
-          <div class="w-full bg-slate-200 rounded-full h-2">
-            <div id="progressBar" class="bg-indigo-600 h-2 rounded-full transition-all" style="width: 0%"></div>
-          </div>
-          <p id="progressText" class="text-xs text-slate-500 mt-1 text-center"></p>
-        </div>
+        <div id="statusAlert" class="hidden p-4 rounded-xl text-sm font-medium"></div>
       </div>
 
-      <!-- Tombol Submit Utama -->
-      <button type="submit" id="btnSubmit" disabled class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow transition">
-        Kirim Dokumen Terkompresi
-      </button>
+      <!-- =============================================================== -->
+      <!-- TAB 4: MENU RIWAYAT KOMPRESI (CARI BERDASARKAN NAMA & KODE)     -->
+      <!-- =============================================================== -->
+      <div id="historyArea" class="hidden p-6 space-y-6">
+        <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-6 space-y-4">
+          <div>
+            <h2 class="text-lg font-bold text-indigo-950">🔍 Cari & Akses Kembali Dokumen Anda</h2>
+            <p class="text-xs text-indigo-700 mt-0.5">Masukkan <b>Nama Pengirim</b> dan <b>Kode Kompresi</b> yang Anda dapatkan saat mengunggah dokumen ke Google Drive.</p>
+          </div>
 
-      <div id="statusAlert" class="hidden p-4 rounded-xl text-sm font-medium"></div>
-    </form>
+          <form id="historySearchForm" class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Nama Pengirim *</label>
+              <input type="text" id="searchNama" required placeholder="Contoh: Budi Santoso" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Kode Kompresi *</label>
+              <input type="text" id="searchKode" required placeholder="Contoh: DOC-8492A" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-mono font-bold uppercase bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="flex items-end">
+              <button type="submit" id="btnSearchHistory" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition text-sm">
+                🔎 Cari Dokumen Saya
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Hasil Pencarian Riwayat -->
+        <div id="historyResultContainer" class="space-y-3"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- MODAL PREVIEW BERDAMPINGAN (BEFORE VS AFTER)                      -->
+  <!-- ================================================================= -->
+  <div id="previewModal" class="fixed inset-0 z-50 hidden bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-200">
+      <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-lg" id="previewModalTitle">Preview Dokumen</h3>
+          <p class="text-xs text-slate-300">Perbandingan dokumen asli dan hasil akhir (termasuk seleksi halaman & tanda tangan).</p>
+        </div>
+        <button type="button" onclick="closePreviewModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-red-600 rounded-lg text-sm font-bold transition">
+          ✕ Tutup
+        </button>
+      </div>
+
+      <div id="pdfNavToolbar" class="hidden bg-slate-100 px-6 py-2.5 border-b border-slate-200 flex items-center justify-center gap-4">
+        <button type="button" id="btnPrevPage" class="px-3 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold hover:bg-slate-50 disabled:opacity-40">
+          ◀ Halaman Sebelumnya
+        </button>
+        <span class="text-xs font-bold text-slate-700" id="pdfPageIndicator">Halaman 1 dari 1</span>
+        <button type="button" id="btnNextPage" class="px-3 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold hover:bg-slate-50 disabled:opacity-40">
+          Halaman Berikutnya ▶
+        </button>
+      </div>
+
+      <div id="previewGridContainer" class="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 flex-1">
+        <!-- Kolom BEFORE -->
+        <div id="beforeColumn" class="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+          <div class="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-slate-600">BEFORE (Dokumen Asli)</span>
+            <span id="beforeMetaBadge" class="text-xs font-bold text-slate-800 bg-slate-200 px-2.5 py-0.5 rounded-full">0 KB</span>
+          </div>
+          <div class="p-3 flex-1 flex items-center justify-center bg-slate-900/5 min-h-[320px] max-h-[60vh] overflow-auto">
+            <img id="beforeImgPreview" class="hidden max-w-full max-h-[55vh] object-contain rounded shadow" alt="Before">
+            <canvas id="beforePdfCanvas" class="hidden max-w-full max-h-[55vh] object-contain rounded shadow bg-white"></canvas>
+          </div>
+        </div>
+
+        <!-- Kolom AFTER -->
+        <div id="afterColumn" class="bg-white rounded-xl border-2 border-emerald-500 shadow-sm flex flex-col overflow-hidden">
+          <div class="px-4 py-2.5 bg-emerald-50 border-b border-emerald-200 flex items-center justify-between">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-emerald-800" id="afterColumnLabel">AFTER (Hasil Kompresi + TTD)</span>
+            <span id="afterMetaBadge" class="text-xs font-bold text-white bg-emerald-600 px-2.5 py-0.5 rounded-full">0 KB</span>
+          </div>
+          <div class="p-3 flex-1 flex items-center justify-center bg-slate-900/5 min-h-[320px] max-h-[60vh] overflow-auto">
+            <img id="afterImgPreview" class="hidden max-w-full max-h-[55vh] object-contain rounded shadow" alt="After">
+            <canvas id="afterPdfCanvas" class="hidden max-w-full max-h-[55vh] object-contain rounded shadow bg-white"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
 <script>
-  // ==========================================
-  // KONFIGURASI BACKEND (ISI SESUAI KEBUTUHAN)
-  // ==========================================
-  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxES-PNGaytk74AvtqVw1U8iQ--NS2V_Q44C48VUNrOczjXZm98orD-xx-sIP5R0sOl/exec"; 
-  
-  // Opsional: Jika ingin langsung simpan metadata ke Supabase dari Frontend
-  const USE_DIRECT_SUPABASE = false; 
-  const SUPABASE_URL = "https://xxxx.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6...";
+  // =========================================================================
+  // KONFIGURASI URL WEB APP GOOGLE APPS SCRIPT
+  // =========================================================================
+  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxES-PNGaytk74AvtqVw1U8iQ--NS2V_Q44C48VUNrOczjXZm98orD-xx-sIP5R0sOl/exec";
 
-  // Konfigurasi Worker PDF.js
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  let currentFile = null;
-  let compressedBlob = null;
-  let detectedType = ""; // "image" atau "pdf"
+  let currentMode = 'local'; // 'local' | 'merge' | 'cloud' | 'history'
+  let fileQueue = [];
+  let mergedPdfBlob = null;
+  let mergedTotalPages = 0;
+  let hasSignatureDrawn = false;
+  let pdfPreviewState = { mode: 'compare', origDoc: null, compDoc: null, pageNum: 1, totalPages: 1, keptPagesMap: [] };
 
   const fileInput = document.getElementById('fileInput');
-  const compressionPanel = document.getElementById('compressionPanel');
-  const sizeOptionsContainer = document.getElementById('sizeOptionsContainer');
-  const btnCompress = document.getElementById('btnCompress');
-  const btnSubmit = document.getElementById('btnSubmit');
+  const fileListContainer = document.getElementById('fileListContainer');
+  const batchActionBar = document.getElementById('batchActionBar');
 
-  // Format angka Byte ke KB / MB
   function formatBytes(bytes) {
     if (bytes < 1024) return bytes + " B";
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
     else return (bytes / 1048576).toFixed(2) + " MB";
   }
 
-  // 1. DETEKSI OTOMATIS SAAT FILE DIPILIH
-  fileInput.addEventListener('change', (e) => {
+  // Generate Kode Kompresi Unik (Contoh: DOC-7F39A)
+  window.generateNewAccessCode = () => {
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let code = 'DOC-';
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById('kodeKompresi').value = code;
+  };
+  generateNewAccessCode();
+
+  // =========================================================================
+  // 1. INISIALISASI KANVAS TANDA TANGAN DIGITAL (TOUCH & MOUSE)
+  // =========================================================================
+  const sigCanvas = document.getElementById('signaturePad');
+  const sigCtx = sigCanvas.getContext('2d');
+  let isDrawingSig = false;
+
+  sigCtx.strokeStyle = '#0f172a';
+  sigCtx.lineWidth = 2.6;
+  sigCtx.lineCap = 'round';
+  sigCtx.lineJoin = 'round';
+
+  function getSigPointerPos(e) {
+    const rect = sigCanvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * (sigCanvas.width / rect.width),
+      y: (clientY - rect.top) * (sigCanvas.height / rect.height)
+    };
+  }
+
+  sigCanvas.addEventListener('pointerdown', (e) => {
+    isDrawingSig = true;
+    hasSignatureDrawn = true;
+    const pos = getSigPointerPos(e);
+    sigCtx.beginPath();
+    sigCtx.moveTo(pos.x, pos.y);
+  });
+
+  sigCanvas.addEventListener('pointermove', (e) => {
+    if (!isDrawingSig) return;
+    const pos = getSigPointerPos(e);
+    sigCtx.lineTo(pos.x, pos.y);
+    sigCtx.stroke();
+  });
+
+  window.addEventListener('pointerup', () => { isDrawingSig = false; });
+
+  window.clearSignatureCanvas = () => {
+    sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+    hasSignatureDrawn = false;
+  };
+
+  // Upload Gambar TTD PNG ke Kanvas Signature
+  document.getElementById('sigUploadInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        clearSignatureCanvas();
+        const ratio = Math.min(sigCanvas.width / img.width, sigCanvas.height / img.height) * 0.85;
+        const w = img.width * ratio;
+        const h = img.height * ratio;
+        sigCtx.drawImage(img, (sigCanvas.width - w) / 2, (sigCanvas.height - h) / 2, w, h);
+        hasSignatureDrawn = true;
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 
-    currentFile = file;
-    compressedBlob = null;
-    btnSubmit.disabled = true;
-    document.getElementById('compressedResultBox').classList.add('hidden');
-    compressionPanel.classList.remove('hidden');
+  window.toggleSignaturePanel = (fromCheckbox = false) => {
+    const cb = document.getElementById('enableSignature');
+    if (!fromCheckbox) cb.checked = !cb.checked;
+    const body = document.getElementById('signatureConfigBody');
+    const badge = document.getElementById('sigStatusBadge');
 
-    document.getElementById('fileNameDisplay').textContent = file.name;
-    document.getElementById('originalSizeDisplay').textContent = formatBytes(file.size);
-
-    // Deteksi MIME Type
-    if (file.type.startsWith('image/')) {
-      detectedType = 'image';
-      document.getElementById('fileTypeBadge').textContent = 'File Gambar Terdeteksi';
-      document.getElementById('fileTypeBadge').className = 'px-2.5 py-1 text-xs font-bold uppercase rounded-full bg-blue-100 text-blue-700';
-      renderSizeOptions([
-        { label: 'Ekstra Kecil (< 150 KB)', targetKB: 140, desc: 'Kompresi tinggi' },
-        { label: 'Sedang (150 - 350 KB)', targetKB: 300, desc: 'Rekomendasi standar' },
-        { label: 'Tajam (350 - 700 KB)', targetKB: 600, desc: 'Resolusi tinggi' }
-      ]);
-    } else if (file.type === 'application/pdf') {
-      detectedType = 'pdf';
-      document.getElementById('fileTypeBadge').textContent = 'Dokumen PDF Terdeteksi';
-      document.getElementById('fileTypeBadge').className = 'px-2.5 py-1 text-xs font-bold uppercase rounded-full bg-amber-100 text-amber-700';
-      renderSizeOptions([
-        { label: 'Ringan (< 500 KB)', targetKB: 450, desc: 'Cocok untuk 1-3 halaman' },
-        { label: 'Standar (500 KB - 1.2 MB)', targetKB: 1000, desc: 'Kualitas teks jelas' },
-        { label: 'Detail Tinggi (1.2 - 2.5 MB)', targetKB: 2200, desc: 'Untuk dokumen banyak halaman' }
-      ]);
+    if (cb.checked) {
+      body.classList.remove('hidden');
+      badge.textContent = 'Aktif';
+      badge.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700';
     } else {
-      alert('Format file tidak didukung! Harap pilih gambar (JPG/PNG) atau PDF.');
-      compressionPanel.classList.add('hidden');
+      body.classList.add('hidden');
+      badge.textContent = 'Nonaktif';
+      badge.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-slate-200 text-slate-600';
+    }
+  };
+
+  // Fungsi Menempelkan Tanda Tangan ke Canvas Halaman/Gambar
+  function stampSignatureOnCanvas(targetCanvas) {
+    const enabled = document.getElementById('enableSignature').checked;
+    if (!enabled || !hasSignatureDrawn) return;
+
+    const ctx = targetCanvas.getContext('2d');
+    const posType = document.getElementById('sigPosition').value;
+    const scaleRatio = parseFloat(document.getElementById('sigScaleSize').value) || 0.22;
+    const signerName = document.getElementById('sigSignerName').value.trim();
+
+    const sigW = targetCanvas.width * scaleRatio;
+    const sigH = sigW * (sigCanvas.height / sigCanvas.width);
+    const padX = targetCanvas.width * 0.05;
+    const padY = targetCanvas.height * 0.05 + (signerName ? 24 : 0);
+
+    let x = targetCanvas.width - sigW - padX;
+    if (posType === 'bottom-left') x = padX;
+    else if (posType === 'bottom-center') x = (targetCanvas.width - sigW) / 2;
+
+    const y = targetCanvas.height - sigH - padY;
+
+    ctx.drawImage(sigCanvas, x, y, sigW, sigH);
+
+    if (signerName) {
+      const fontSize = Math.max(11, Math.round(targetCanvas.width * 0.015));
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'center';
+      ctx.fillText(signerName, x + sigW / 2, y + sigH + fontSize + 4);
+    }
+  }
+
+  // =========================================================================
+  // 2. PARSER SELEKSI / HAPUS HALAMAN PDF (Contoh: "1, 3, 5-7")
+  // =========================================================================
+  function parsePageSelection(rangeStr, maxPages) {
+    if (!rangeStr || !rangeStr.trim()) {
+      return Array.from({ length: maxPages }, (_, i) => i + 1);
+    }
+    const pages = new Set();
+    const parts = rangeStr.split(',');
+    for (let part of parts) {
+      part = part.trim();
+      if (!part) continue;
+      if (part.includes('-')) {
+        const [startRaw, endRaw] = part.split('-').map(n => parseInt(n.trim(), 10));
+        if (!isNaN(startRaw) && !isNaN(endRaw)) {
+          const s = Math.max(1, Math.min(startRaw, endRaw));
+          const e = Math.min(maxPages, Math.max(startRaw, endRaw));
+          for (let i = s; i <= e; i++) pages.add(i);
+        }
+      } else {
+        const num = parseInt(part, 10);
+        if (!isNaN(num) && num >= 1 && num <= maxPages) pages.add(num);
+      }
+    }
+    const result = Array.from(pages).sort((a, b) => a - b);
+    return result.length > 0 ? result : Array.from({ length: maxPages }, (_, i) => i + 1);
+  }
+
+  // =========================================================================
+  // 3. NAVIGASI 4 TAB MODE KERJA
+  // =========================================================================
+  window.switchMode = (mode) => {
+    currentMode = mode;
+    ['local', 'merge', 'cloud', 'history'].forEach(m => {
+      const btn = document.getElementById('tab_' + m);
+      if (m === mode) {
+        btn.className = "py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 bg-white text-indigo-700 shadow-sm";
+      } else {
+        btn.className = "py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-white/60";
+      }
+    });
+
+    const workspaceArea = document.getElementById('workspaceArea');
+    const historyArea = document.getElementById('historyArea');
+
+    if (mode === 'history') {
+      workspaceArea.classList.add('hidden');
+      historyArea.classList.remove('hidden');
+      return;
+    }
+
+    workspaceArea.classList.remove('hidden');
+    historyArea.classList.add('hidden');
+
+    const banner = document.getElementById('modeBanner');
+    const bannerText = document.getElementById('modeBannerText');
+    const cloudIdentity = document.getElementById('cloudIdentitySection');
+    const mergeSettings = document.getElementById('mergeSettingsSection');
+    const btnCompressAll = document.getElementById('btnCompressAll');
+    const btnMergeNow = document.getElementById('btnMergeNow');
+    const btnDownloadAllLocal = document.getElementById('btnDownloadAllLocal');
+    const btnSubmitCloud = document.getElementById('btnSubmitCloud');
+    const mergedResultCard = document.getElementById('mergedResultCard');
+
+    if (mode === 'local') {
+      banner.className = "p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-start gap-3";
+      bannerText.innerHTML = "<b>Mode Mandiri (100% Lokal):</b> Pilih halaman PDF yang ingin dipertahankan, bubuhkan tanda tangan digital, kompres ukuran, dan unduh langsung tanpa server.";
+      cloudIdentity.classList.add('hidden');
+      mergeSettings.classList.add('hidden');
+      mergedResultCard.classList.add('hidden');
+      btnCompressAll.classList.remove('hidden');
+      btnMergeNow.classList.add('hidden');
+      btnDownloadAllLocal.classList.remove('hidden');
+      btnSubmitCloud.classList.add('hidden');
+    } else if (mode === 'merge') {
+      banner.className = "p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start gap-3";
+      bannerText.innerHTML = "<b>Mode Gabung PDF & Seleksi Halaman:</b> Anda bisa memilih halaman tertentu dari setiap PDF, mengatur urutannya, lalu menggabungkannya menjadi 1 file PDF utuh.";
+      cloudIdentity.classList.add('hidden');
+      mergeSettings.classList.remove('hidden');
+      btnCompressAll.classList.add('hidden');
+      btnMergeNow.classList.remove('hidden');
+      btnDownloadAllLocal.classList.add('hidden');
+      btnSubmitCloud.classList.add('hidden');
+      if (mergedPdfBlob) mergedResultCard.classList.remove('hidden');
+    } else if (mode === 'cloud') {
+      banner.className = "p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs sm:text-sm flex items-start gap-3";
+      bannerText.innerHTML = "<b>Mode Simpan ke Google Drive & Kode Riwayat:</b> Dokumen terkompresi akan disimpan ke Google Drive. Catat <b>Kode Kompresi</b> Anda untuk mengaksesnya kembali kapan saja di tab Riwayat.";
+      cloudIdentity.classList.remove('hidden');
+      mergeSettings.classList.add('hidden');
+      mergedResultCard.classList.add('hidden');
+      btnCompressAll.classList.remove('hidden');
+      btnMergeNow.classList.add('hidden');
+      btnDownloadAllLocal.classList.add('hidden');
+      btnSubmitCloud.classList.remove('hidden');
+    }
+
+    renderQueueUI();
+  };
+
+  // =========================================================================
+  // 4. TAMBAH FILE & DETEKSI OTOMATIS JUMLAH HALAMAN PDF
+  // =========================================================================
+  fileInput.addEventListener('change', async (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    if (!selectedFiles.length) return;
+
+    for (const file of selectedFiles) {
+      const isImg = file.type.startsWith('image/');
+      const isPdf = file.type === 'application/pdf';
+      if (!isImg && !isPdf) continue;
+
+      const id = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+      const type = isImg ? 'image' : 'pdf';
+      let totalPages = 1;
+
+      if (isPdf) {
+        try {
+          const buf = await file.arrayBuffer();
+          const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+          totalPages = pdfDoc.numPages;
+        } catch (err) {
+          totalPages = 1;
+        }
+      }
+
+      const options = isImg ? [
+        { label: 'Ekstra Kecil (< 150 KB)', targetKB: 140 },
+        { label: 'Sedang (150 - 350 KB)', targetKB: 300 },
+        { label: 'Tajam (350 - 700 KB)', targetKB: 600 }
+      ] : [
+        { label: 'Ringan (< 500 KB)', targetKB: 450 },
+        { label: 'Standar (500 KB - 1.2 MB)', targetKB: 1000 },
+        { label: 'Detail Tinggi (1.2 - 2.5 MB)', targetKB: 2200 }
+      ];
+
+      fileQueue.push({
+        id,
+        file,
+        type,
+        totalPages,
+        pageSelection: totalPages > 1 ? `1-${totalPages}` : '1',
+        keptPagesCount: totalPages,
+        options,
+        selectedTargetKB: options[1].targetKB,
+        compressedBlob: null,
+        status: 'pending',
+        progress: 0
+      });
+    }
+
+    fileInput.value = '';
+    mergedPdfBlob = null;
+    document.getElementById('mergedResultCard').classList.add('hidden');
+    renderQueueUI();
+  });
+
+  // 5. RENDER DAFTAR KARTU FILE
+  function renderQueueUI() {
+    fileListContainer.innerHTML = '';
+
+    if (fileQueue.length === 0) {
+      batchActionBar.classList.add('hidden');
+      updateSummaryBadges();
+      return;
+    }
+
+    batchActionBar.classList.remove('hidden');
+
+    fileQueue.forEach((item, index) => {
+      const isDone = item.status === 'done' && item.compressedBlob;
+      const savingsPct = isDone
+        ? Math.max(0, Math.round((1 - item.compressedBlob.size / item.file.size) * 100))
+        : 0;
+
+      const badgeColor = item.type === 'image' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
+
+      const optionsHtml = item.options.map(opt => `
+        <option value="${opt.targetKB}" ${Number(item.selectedTargetKB) === opt.targetKB ? 'selected' : ''}>
+          ${opt.label}
+        </option>
+      `).join('');
+
+      const card = document.createElement('div');
+      card.className = `p-4 rounded-xl border transition ${isDone ? 'bg-emerald-50/30 border-emerald-300' : 'bg-white border-slate-200'} shadow-sm space-y-3`;
+      card.innerHTML = `
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          
+          <div class="flex items-start gap-3 flex-1 min-w-0">
+            <div class="flex flex-col gap-1 shrink-0">
+              <button type="button" onclick="moveItem(${index}, -1)" ${index === 0 ? 'disabled' : ''} class="px-1.5 py-0.5 text-[10px] bg-slate-100 hover:bg-slate-200 disabled:opacity-30 rounded font-bold">▲</button>
+              <button type="button" onclick="moveItem(${index}, 1)" ${index === fileQueue.length - 1 ? 'disabled' : ''} class="px-1.5 py-0.5 text-[10px] bg-slate-100 hover:bg-slate-200 disabled:opacity-30 rounded font-bold">▼</button>
+            </div>
+
+            <div class="space-y-1 flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-extrabold text-indigo-600">#${index + 1}</span>
+                <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full ${badgeColor}">
+                  ${item.type === 'image' ? 'GAMBAR' : `PDF (${item.totalPages} Hal)`}
+                </span>
+                <h4 class="font-bold text-sm text-slate-800 truncate">${item.file.name}</h4>
+              </div>
+              <div class="flex items-center gap-3 text-xs text-slate-600 flex-wrap">
+                <span>Asli: <b>${formatBytes(item.file.size)}</b></span>
+                ${isDone ? `
+                  <span>➔</span>
+                  <span class="text-emerald-700 font-bold">Hasil: ${formatBytes(item.compressedBlob.size)} (Hemat ${savingsPct}% | ${item.keptPagesCount} Hal)</span>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            ${currentMode !== 'merge' ? `
+              <select onchange="changeTargetSize('${item.id}', this.value)" class="text-xs font-semibold border border-slate-300 rounded-lg px-2.5 py-2 bg-white outline-none">
+                ${optionsHtml}
+              </select>
+
+              <button type="button" onclick="compressSingleItem('${item.id}')" ${item.status === 'compressing' ? 'disabled' : ''} class="px-3 py-2 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 text-white text-xs font-bold rounded-lg transition">
+                ${item.status === 'compressing' ? `Proses (${item.progress}%)...` : (isDone ? 'Proses Ulang' : 'Proses & Kompres')}
+              </button>
+            ` : ''}
+
+            ${isDone && currentMode !== 'merge' ? `
+              <button type="button" onclick="openPreviewModal('${item.id}')" class="px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-xs font-bold rounded-lg transition">
+                👁️ Preview
+              </button>
+              <button type="button" onclick="downloadSingleFile('${item.id}')" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition">
+                ⬇️ Unduh
+              </button>
+            ` : ''}
+
+            <button type="button" onclick="removeItem('${item.id}')" class="p-2 text-slate-400 hover:text-red-600 rounded-lg transition" title="Hapus file">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- FITUR PILIH / HAPUS HALAMAN KHUSUS PDF -->
+        ${item.type === 'pdf' ? `
+          <div class="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/80 px-3 py-2 rounded-lg">
+            <div class="text-xs text-slate-700">
+              <span class="font-bold text-indigo-900">✂️ Pilih / Hapus Halaman PDF:</span>
+              <span class="text-slate-500 ml-1">Ketik halaman yang ingin dipertahankan (contoh: <b>1, 3, 5-${item.totalPages}</b>). Halaman yang tidak ditulis otomatis dihapus.</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <input type="text" value="${item.pageSelection}" onchange="updatePageSelection('${item.id}', this.value)" placeholder="Contoh: 1-${item.totalPages}" class="px-2.5 py-1 text-xs font-mono font-bold border border-slate-300 rounded bg-white w-36 focus:ring-2 focus:ring-indigo-500 outline-none">
+              <span class="text-[11px] font-semibold text-slate-500">dari ${item.totalPages} hal</span>
+            </div>
+          </div>
+        ` : ''}
+      `;
+      fileListContainer.appendChild(card);
+    });
+
+    updateSummaryBadges();
+  }
+
+  window.updatePageSelection = (id, val) => {
+    const item = fileQueue.find(i => i.id === id);
+    if (item) {
+      item.pageSelection = val;
+      item.status = 'pending';
+      item.compressedBlob = null;
+      renderQueueUI();
+    }
+  };
+
+  window.moveItem = (index, direction) => {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= fileQueue.length) return;
+    const temp = fileQueue[index];
+    fileQueue[index] = fileQueue[targetIdx];
+    fileQueue[targetIdx] = temp;
+    mergedPdfBlob = null;
+    document.getElementById('mergedResultCard').classList.add('hidden');
+    renderQueueUI();
+  };
+
+  function updateSummaryBadges() {
+    const total = fileQueue.length;
+    const readyItems = fileQueue.filter(i => i.status === 'done' && i.compressedBlob);
+    const readyCount = readyItems.length;
+
+    document.getElementById('readyCountBadge').textContent = `${readyCount} / ${total} Siap`;
+    document.getElementById('totalFilesText').textContent = `${total} File`;
+
+    const allReady = total > 0 && readyCount === total;
+    const btnDownloadAllLocal = document.getElementById('btnDownloadAllLocal');
+    const btnSubmitCloud = document.getElementById('btnSubmitCloud');
+
+    btnDownloadAllLocal.disabled = !allReady;
+    btnDownloadAllLocal.textContent = allReady
+      ? `⬇️ Unduh Semua File Terkompresi ke Perangkat (${readyCount} File)`
+      : `Proses Semua File Terlebih Dahulu (${readyCount}/${total} Siap)`;
+
+    btnSubmitCloud.disabled = !allReady;
+    btnSubmitCloud.textContent = allReady
+      ? `☁️ Kirim Semua Dokumen ke Google Drive (${readyCount} File)`
+      : `Proses Semua File Terlebih Dahulu (${readyCount}/${total} Siap)`;
+  }
+
+  window.changeTargetSize = (id, val) => {
+    const item = fileQueue.find(i => i.id === id);
+    if (item) {
+      item.selectedTargetKB = parseInt(val, 10);
+      item.status = 'pending';
+      item.compressedBlob = null;
+      renderQueueUI();
+    }
+  };
+
+  window.removeItem = (id) => {
+    fileQueue = fileQueue.filter(i => i.id !== id);
+    renderQueueUI();
+  };
+
+  document.getElementById('btnClearAll').addEventListener('click', () => {
+    fileQueue = [];
+    mergedPdfBlob = null;
+    document.getElementById('mergedResultCard').classList.add('hidden');
+    renderQueueUI();
+  });
+
+  // =========================================================================
+  // 6. MESIN KOMPRESI GAMBAR & PDF (+ SELEKSI HALAMAN & TANDA TANGAN)
+  // =========================================================================
+  window.compressSingleItem = async (id) => {
+    const item = fileQueue.find(i => i.id === id);
+    if (!item) return;
+
+    item.status = 'compressing';
+    item.progress = 10;
+    renderQueueUI();
+
+    try {
+      if (item.type === 'image') {
+        item.compressedBlob = await compressImageToTarget(item.file, item.selectedTargetKB);
+        item.keptPagesCount = 1;
+      } else {
+        const res = await compressPdfToTarget(item, (pct) => {
+          item.progress = pct;
+          renderQueueUI();
+        });
+        item.compressedBlob = res.blob;
+        item.keptPagesCount = res.keptCount;
+      }
+      item.status = 'done';
+    } catch (err) {
+      item.status = 'error';
+      alert(`Gagal memproses ${item.file.name}: ` + err.message);
+    }
+    renderQueueUI();
+  };
+
+  document.getElementById('btnCompressAll').addEventListener('click', async () => {
+    for (const item of fileQueue) {
+      await window.compressSingleItem(item.id);
     }
   });
 
-  // Render Pilihan Radio Rentang Ukuran
-  function renderSizeOptions(options) {
-    sizeOptionsContainer.innerHTML = '';
-    options.forEach((opt, idx) => {
-      const checked = idx === 1 ? 'checked' : '';
-      sizeOptionsContainer.innerHTML += `
-        <label class="border border-slate-300 rounded-lg p-3 cursor-pointer hover:border-indigo-500 flex flex-col justify-between bg-white has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50">
-          <div class="flex items-center gap-2">
-            <input type="radio" name="targetSize" value="${opt.targetKB}" ${checked} class="text-indigo-600 focus:ring-indigo-500">
-            <span class="text-xs font-bold text-slate-800">${opt.label}</span>
-          </div>
-          <span class="text-[11px] text-slate-500 mt-1 pl-5">${opt.desc}</span>
-        </label>
-      `;
-    });
-  }
-
-  // 2. MESIN KOMPRESI GAMBAR (ITERATIVE TARGET SEEKING)
   async function compressImageToTarget(file, targetKB) {
     const targetBytes = targetKB * 1024;
-    if (file.size <= targetBytes) return file; // Jika sudah lebih kecil dari target, tidak perlu diperkecil paksa
+    const sigEnabled = document.getElementById('enableSignature').checked && hasSignatureDrawn;
+
+    if (file.size <= targetBytes && !sigEnabled) return file;
 
     const img = await new Promise((res, rej) => {
       const reader = new FileReader();
-      reader.onload = e => {
-        const i = new Image();
-        i.onload = () => res(i);
-        i.onerror = rej;
-        i.src = e.target.result;
-      };
+      reader.onload = e => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = e.target.result; };
       reader.readAsDataURL(file);
     });
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-
     let scale = 1.0;
-    // Jika resolusi sangat besar (> 2000px), turunkan skala awal agar proporsional
     const maxDim = Math.max(img.width, img.height);
     if (maxDim > 2000) scale = 2000 / maxDim;
 
     let bestBlob = null;
-
-    // Loop penurunan skala & kualitas secara bertahap sampai masuk targetBytes
     while (scale >= 0.3) {
       canvas.width = Math.round(img.width * scale);
       canvas.height = Math.round(img.height * scale);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // Binary search kualitas JPEG antara 0.15 sampai 0.92
+      // Bubuhkan tanda tangan jika diaktifkan
+      stampSignatureOnCanvas(canvas);
+
       let low = 0.15, high = 0.92;
       for (let i = 0; i < 6; i++) {
-        const midQuality = (low + high) / 2;
-        const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', midQuality));
+        const mid = (low + high) / 2;
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', mid));
         bestBlob = blob;
-
-        if (blob.size > targetBytes) {
-          high = midQuality; // Perkecil kualitas
-        } else {
-          low = midQuality;  // Naikkan kualitas agar mendekati batas atas target
-        }
+        if (blob.size > targetBytes) high = mid;
+        else low = mid;
       }
-
       if (bestBlob && bestBlob.size <= targetBytes) break;
-      scale -= 0.2; // Jika pada kualitas rendah masih kebesaran, turunkan dimensi piksel
+      scale -= 0.2;
     }
-
     return bestBlob;
   }
 
-  // 3. MESIN KOMPRESI PDF (RENDER PAGE-BY-PAGE TANPA MENGUBAH ISI)
-  async function compressPdfToTarget(file, targetKB) {
-    const targetBytes = targetKB * 1024;
-    if (file.size <= targetBytes) return file;
-
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    progressContainer.classList.remove('hidden');
-
-    const arrayBuffer = await file.arrayBuffer();
+  async function compressPdfToTarget(item, onProgress) {
+    const arrayBuffer = await item.file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const totalPages = pdf.numPages;
+    const pagesToKeep = parsePageSelection(item.pageSelection, pdf.numPages);
 
-    // Tentukan skala & kualitas berdasarkan jatah byte per halaman
-    const budgetPerPageKB = targetKB / totalPages;
-    let renderScale = 1.5;
-    let jpegQuality = 0.75;
+    const budgetPerPageKB = item.selectedTargetKB / pagesToKeep.length;
+    let renderScale = 1.5, jpegQuality = 0.75;
+    if (budgetPerPageKB < 80) { renderScale = 1.0; jpegQuality = 0.5; }
+    else if (budgetPerPageKB < 180) { renderScale = 1.25; jpegQuality = 0.65; }
+    else { renderScale = 1.6; jpegQuality = 0.80; }
 
-    if (budgetPerPageKB < 80) {
-      renderScale = 1.0; jpegQuality = 0.5;
-    } else if (budgetPerPageKB < 180) {
-      renderScale = 1.25; jpegQuality = 0.65;
-    } else {
-      renderScale = 1.6; jpegQuality = 0.80;
-    }
-
+    const sigTarget = document.getElementById('sigTargetPage').value;
     const { jsPDF } = window.jspdf;
     let newPdf = null;
 
-    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      progressText.textContent = `Memproses halaman ${pageNum} dari ${totalPages}...`;
-      progressBar.style.width = `${Math.round((pageNum / totalPages) * 100)}%`;
+    for (let idx = 0; idx < pagesToKeep.length; idx++) {
+      const pageNum = pagesToKeep[idx];
+      if (onProgress) onProgress(Math.round(((idx + 1) / pagesToKeep.length) * 100));
 
       const page = await pdf.getPage(pageNum);
       const viewport = page.getViewport({ scale: renderScale });
 
       const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
       canvas.width = viewport.width;
       canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
 
-      await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+      // Cek apakah halaman ini perlu ditempel tanda tangan
+      const shouldSign =
+        sigTarget === 'all' ||
+        (sigTarget === 'first' && idx === 0) ||
+        (sigTarget === 'last' && idx === pagesToKeep.length - 1);
+
+      if (shouldSign) stampSignatureOnCanvas(canvas);
+
       const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
-
-      // Ukuran asli dalam satuan point (pt) agar ukuran kertas PDF tidak berubah
       const origViewport = page.getViewport({ scale: 1.0 });
       const orientation = origViewport.width > origViewport.height ? 'l' : 'p';
 
-      if (pageNum === 1) {
-        newPdf = new jsPDF({
-          orientation: orientation,
-          unit: 'pt',
-          format: [origViewport.width, origViewport.height],
-          compress: true
-        });
+      if (idx === 0) {
+        newPdf = new jsPDF({ orientation, unit: 'pt', format: [origViewport.width, origViewport.height], compress: true });
       } else {
         newPdf.addPage([origViewport.width, origViewport.height], orientation);
       }
-
       newPdf.addImage(imgData, 'JPEG', 0, 0, origViewport.width, origViewport.height, undefined, 'FAST');
     }
 
-    progressContainer.classList.add('hidden');
-    return newPdf.output('blob');
+    return { blob: newPdf.output('blob'), keptCount: pagesToKeep.length };
   }
 
-  // TOMBOL PROSES KOMPRESI
-  btnCompress.addEventListener('click', async () => {
-    if (!currentFile) return;
-    const selectedRadio = document.querySelector('input[name="targetSize"]:checked');
-    const targetKB = parseInt(selectedRadio.value, 10);
+  // =========================================================================
+  // 7. PENGGABUNG PDF (MERGE) DENGAN SELEKSI HALAMAN & TANDA TANGAN
+  // =========================================================================
+  document.getElementById('btnMergeNow').addEventListener('click', async () => {
+    if (fileQueue.length === 0) return alert('Tambahkan file terlebih dahulu.');
 
-    btnCompress.disabled = true;
-    btnCompress.textContent = 'Sedang Mengompresi...';
+    const btnMerge = document.getElementById('btnMergeNow');
+    const qualityPreset = document.getElementById('mergedTargetQuality').value;
+    let renderScale = 1.35, jpegQuality = 0.72;
+    if (qualityPreset === 'low') { renderScale = 1.0; jpegQuality = 0.52; }
+    else if (qualityPreset === 'high') { renderScale = 1.7; jpegQuality = 0.85; }
+
+    btnMerge.disabled = true;
+    btnMerge.textContent = '⏳ Menggabungkan Halaman Terpilih...';
 
     try {
-      if (detectedType === 'image') {
-        compressedBlob = await compressImageToTarget(currentFile, targetKB);
-      } else {
-        compressedBlob = await compressPdfToTarget(currentFile, targetKB);
+      const { jsPDF } = window.jspdf;
+      let mergedDoc = null;
+      let totalPageCounter = 0;
+
+      // Hitung semua halaman terpilih terlebih dahulu untuk penempatan tanda tangan
+      const sigTarget = document.getElementById('sigTargetPage').value;
+      const renderTasks = [];
+
+      for (const item of fileQueue) {
+        if (item.type === 'pdf') {
+          const buf = await item.file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+          const pagesToKeep = parsePageSelection(item.pageSelection, pdf.numPages);
+          pagesToKeep.forEach(pNum => renderTasks.push({ type: 'pdf', pdf, pNum }));
+        } else {
+          renderTasks.push({ type: 'image', file: item.file });
+        }
       }
 
-      document.getElementById('compressedResultBox').classList.remove('hidden');
-      document.getElementById('compressedSizeDisplay').textContent = formatBytes(compressedBlob.size);
-      btnSubmit.disabled = false;
+      for (let tIdx = 0; tIdx < renderTasks.length; tIdx++) {
+        const task = renderTasks[tIdx];
+        btnMerge.textContent = `⏳ Memproses Halaman (${tIdx + 1}/${renderTasks.length})...`;
+
+        const shouldSign =
+          sigTarget === 'all' ||
+          (sigTarget === 'first' && tIdx === 0) ||
+          (sigTarget === 'last' && tIdx === renderTasks.length - 1);
+
+        if (task.type === 'pdf') {
+          const page = await task.pdf.getPage(task.pNum);
+          const vp = page.getViewport({ scale: renderScale });
+          const origVp = page.getViewport({ scale: 1.0 });
+
+          const canvas = document.createElement('canvas');
+          canvas.width = vp.width; canvas.height = vp.height;
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+
+          if (shouldSign) stampSignatureOnCanvas(canvas);
+
+          const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
+          const orientation = origVp.width > origVp.height ? 'l' : 'p';
+
+          if (!mergedDoc) {
+            mergedDoc = new jsPDF({ orientation, unit: 'pt', format: [origVp.width, origVp.height], compress: true });
+          } else {
+            mergedDoc.addPage([origVp.width, origVp.height], orientation);
+          }
+          mergedDoc.addImage(imgData, 'JPEG', 0, 0, origVp.width, origVp.height, undefined, 'FAST');
+          totalPageCounter++;
+        } else {
+          const img = await new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = e => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = e.target.result; };
+            r.readAsDataURL(task.file);
+          });
+
+          const canvas = document.createElement('canvas');
+          let w = img.width, h = img.height;
+          if (Math.max(w, h) > 1600) {
+            const r = 1600 / Math.max(w, h);
+            w = Math.round(w * r); h = Math.round(h * r);
+          }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+          if (shouldSign) stampSignatureOnCanvas(canvas);
+
+          const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
+          const isLandscape = w > h;
+          const pageW = isLandscape ? 841.89 : 595.28;
+          const pageH = isLandscape ? 595.28 : 841.89;
+
+          if (!mergedDoc) {
+            mergedDoc = new jsPDF({ orientation: isLandscape ? 'l' : 'p', unit: 'pt', format: 'a4', compress: true });
+          } else {
+            mergedDoc.addPage('a4', isLandscape ? 'l' : 'p');
+          }
+
+          const margin = 20;
+          const ratio = Math.min((pageW - margin * 2) / w, (pageH - margin * 2) / h);
+          const drawW = w * ratio, drawH = h * ratio;
+          mergedDoc.addImage(imgData, 'JPEG', (pageW - drawW) / 2, (pageH - drawH) / 2, drawW, drawH, undefined, 'FAST');
+          totalPageCounter++;
+        }
+      }
+
+      mergedPdfBlob = mergedDoc.output('blob');
+      mergedTotalPages = totalPageCounter;
+
+      const baseName = (document.getElementById('mergedFileName').value || 'Dokumen_Gabungan').replace(/\.pdf$/i, '');
+      document.getElementById('mergedResultTitle').textContent = `${baseName}.pdf`;
+      document.getElementById('mergedResultMeta').textContent = `Total: ${totalPageCounter} Halaman Terpilih | Ukuran Akhir: ${formatBytes(mergedPdfBlob.size)}`;
+      document.getElementById('mergedResultCard').classList.remove('hidden');
+
     } catch (err) {
-      alert('Gagal mengompresi file: ' + err.message);
+      alert('Gagal menggabungkan PDF: ' + err.message);
     } finally {
-      btnCompress.disabled = false;
-      btnCompress.textContent = 'Proses Kompresi Ulang';
+      btnMerge.disabled = false;
+      btnMerge.textContent = '📑 Gabung Halaman Terpilih Jadi 1 PDF';
     }
   });
 
-  // 4. PENGIRIMAN KE BACKEND (GOOGLE APPS SCRIPT / SUPABASE)
-  document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!compressedBlob) return alert('Silakan klik tombol Proses Kompresi terlebih dahulu.');
+  // =========================================================================
+  // 8. UNDUH LOKAL & PREVIEW MODAL
+  // =========================================================================
+  function triggerBrowserDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
 
+  window.downloadSingleFile = (id) => {
+    const item = fileQueue.find(i => i.id === id);
+    if (!item || !item.compressedBlob) return;
+    const ext = item.type === 'image' ? '.jpg' : '.pdf';
+    const cleanName = item.file.name.replace(/\.[^/.]+$/, "") + "_compressed" + ext;
+    triggerBrowserDownload(item.compressedBlob, cleanName);
+  };
+
+  document.getElementById('btnDownloadAllLocal').addEventListener('click', () => {
+    fileQueue.forEach((item, idx) => {
+      if (item.compressedBlob) setTimeout(() => window.downloadSingleFile(item.id), idx * 350);
+    });
+  });
+
+  window.downloadMergedPdf = () => {
+    if (!mergedPdfBlob) return;
+    const baseName = (document.getElementById('mergedFileName').value || 'Dokumen_Gabungan').replace(/\.pdf$/i, '');
+    triggerBrowserDownload(mergedPdfBlob, `${baseName}.pdf`);
+  };
+
+  window.openPreviewModal = async (id) => {
+    const item = fileQueue.find(i => i.id === id);
+    if (!item || !item.compressedBlob) return;
+
+    document.getElementById('beforeColumn').classList.remove('hidden');
+    document.getElementById('previewGridContainer').className = 'p-4 sm:p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 flex-1';
+    document.getElementById('afterColumnLabel').textContent = 'AFTER (Hasil Kompresi + TTD)';
+    document.getElementById('previewModalTitle').textContent = `Preview: ${item.file.name}`;
+    document.getElementById('beforeMetaBadge').textContent = formatBytes(item.file.size);
+    const pct = Math.max(0, Math.round((1 - item.compressedBlob.size / item.file.size) * 100));
+    document.getElementById('afterMetaBadge').textContent = `${formatBytes(item.compressedBlob.size)} (Hemat ${pct}%)`;
+
+    const beforeImg = document.getElementById('beforeImgPreview');
+    const afterImg = document.getElementById('afterImgPreview');
+    const beforeCanvas = document.getElementById('beforePdfCanvas');
+    const afterCanvas = document.getElementById('afterPdfCanvas');
+    const pdfToolbar = document.getElementById('pdfNavToolbar');
+
+    document.getElementById('previewModal').classList.remove('hidden');
+
+    if (item.type === 'image') {
+      pdfToolbar.classList.add('hidden');
+      beforeCanvas.classList.add('hidden'); afterCanvas.classList.add('hidden');
+      beforeImg.classList.remove('hidden'); afterImg.classList.remove('hidden');
+      beforeImg.src = URL.createObjectURL(item.file);
+      afterImg.src = URL.createObjectURL(item.compressedBlob);
+    } else {
+      beforeImg.classList.add('hidden'); afterImg.classList.add('hidden');
+      beforeCanvas.classList.remove('hidden'); afterCanvas.classList.remove('hidden');
+      pdfToolbar.classList.remove('hidden');
+
+      const origBuf = await item.file.arrayBuffer();
+      const compBuf = await item.compressedBlob.arrayBuffer();
+
+      pdfPreviewState.mode = 'compare';
+      pdfPreviewState.origDoc = await pdfjsLib.getDocument({ data: origBuf }).promise;
+      pdfPreviewState.compDoc = await pdfjsLib.getDocument({ data: compBuf }).promise;
+      pdfPreviewState.keptPagesMap = parsePageSelection(item.pageSelection, pdfPreviewState.origDoc.numPages);
+      pdfPreviewState.pageNum = 1;
+      pdfPreviewState.totalPages = pdfPreviewState.compDoc.numPages;
+
+      await renderPdfComparisonPage(1);
+    }
+  };
+
+  window.openMergedPreview = async () => {
+    if (!mergedPdfBlob) return;
+    document.getElementById('previewModalTitle').textContent = 'Preview Hasil Penggabungan PDF';
+    document.getElementById('beforeColumn').classList.add('hidden');
+    document.getElementById('previewGridContainer').className = 'p-4 sm:p-6 overflow-y-auto grid grid-cols-1 gap-6 bg-slate-50 flex-1';
+    document.getElementById('afterColumnLabel').textContent = `DOKUMEN GABUNGAN (${mergedTotalPages} HALAMAN)`;
+    document.getElementById('afterMetaBadge').textContent = formatBytes(mergedPdfBlob.size);
+
+    document.getElementById('afterImgPreview').classList.add('hidden');
+    document.getElementById('afterPdfCanvas').classList.remove('hidden');
+    document.getElementById('pdfNavToolbar').classList.remove('hidden');
+    document.getElementById('previewModal').classList.remove('hidden');
+
+    const compBuf = await mergedPdfBlob.arrayBuffer();
+    pdfPreviewState.mode = 'single';
+    pdfPreviewState.compDoc = await pdfjsLib.getDocument({ data: compBuf }).promise;
+    pdfPreviewState.pageNum = 1;
+    pdfPreviewState.totalPages = pdfPreviewState.compDoc.numPages;
+
+    await renderPdfComparisonPage(1);
+  };
+
+  async function renderPdfComparisonPage(pageNumber) {
+    const { mode, origDoc, compDoc, totalPages, keptPagesMap } = pdfPreviewState;
+    document.getElementById('pdfPageIndicator').textContent = `Halaman Hasil ${pageNumber} dari ${totalPages}`;
+    document.getElementById('btnPrevPage').disabled = pageNumber <= 1;
+    document.getElementById('btnNextPage').disabled = pageNumber >= totalPages;
+
+    if (mode === 'compare' && origDoc) {
+      const origPageNum = keptPagesMap[pageNumber - 1] || pageNumber;
+      const origPage = await origDoc.getPage(origPageNum);
+      const origVp = origPage.getViewport({ scale: 1.2 });
+      const bCanvas = document.getElementById('beforePdfCanvas');
+      bCanvas.width = origVp.width; bCanvas.height = origVp.height;
+      await origPage.render({ canvasContext: bCanvas.getContext('2d'), viewport: origVp }).promise;
+    }
+
+    const compPage = await compDoc.getPage(pageNumber);
+    const compVp = compPage.getViewport({ scale: 1.2 });
+    const aCanvas = document.getElementById('afterPdfCanvas');
+    aCanvas.width = compVp.width; aCanvas.height = compVp.height;
+    await compPage.render({ canvasContext: aCanvas.getContext('2d'), viewport: compVp }).promise;
+  }
+
+  document.getElementById('btnPrevPage').addEventListener('click', () => {
+    if (pdfPreviewState.pageNum > 1) {
+      pdfPreviewState.pageNum--;
+      renderPdfComparisonPage(pdfPreviewState.pageNum);
+    }
+  });
+
+  document.getElementById('btnNextPage').addEventListener('click', () => {
+    if (pdfPreviewState.pageNum < pdfPreviewState.totalPages) {
+      pdfPreviewState.pageNum++;
+      renderPdfComparisonPage(pdfPreviewState.pageNum);
+    }
+  });
+
+  window.closePreviewModal = () => {
+    document.getElementById('previewModal').classList.add('hidden');
+  };
+
+  // =========================================================================
+  // 9. SIMPAN KE GOOGLE DRIVE & PENCATATAN KODE RIWAYAT KOMPRESI
+  // =========================================================================
+  async function sendFilesToGas(filesPayload, nama, keterangan, kodeKompresi) {
     const alertBox = document.getElementById('statusAlert');
-    btnSubmit.disabled = true;
-    btnSubmit.textContent = 'Mengunggah ke Server...';
-    alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-blue-50 text-blue-700';
-    alertBox.textContent = 'Sedang mengunggah dokumen ke Google Drive & mencatat link...';
+    alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-blue-50 text-blue-800 border border-blue-200';
+    alertBox.textContent = `Mengunggah ${filesPayload.length} dokumen ke Google Drive & menyimpan Kode Riwayat...`;
     alertBox.classList.remove('hidden');
 
     try {
-      // Ubah Blob hasil kompresi menjadi Base64 untuk dikirim ke Apps Script
-      const base64Data = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result.split(',')[1]);
-        reader.readAsDataURL(compressedBlob);
-      });
-
-      const ext = detectedType === 'image' ? '.jpg' : '.pdf';
-      const cleanName = currentFile.name.replace(/\.[^/.]+$/, "") + "_compressed" + ext;
-
-      const payload = {
-        nama: document.getElementById('nama').value,
-        keterangan: document.getElementById('keterangan').value,
-        fileName: cleanName,
-        mimeType: compressedBlob.type,
-        originalSize: formatBytes(currentFile.size),
-        compressedSize: formatBytes(compressedBlob.size),
-        fileBase64: base64Data
-      };
-
       const response = await fetch(GAS_WEB_APP_URL, {
         method: 'POST',
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          action: 'upload',
+          nama,
+          keterangan,
+          kodeKompresi: kodeKompresi.toUpperCase(),
+          files: filesPayload
+        })
       });
-
       const result = await response.json();
 
       if (result.status === 'success') {
-        alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-800 border border-emerald-200';
-        alertBox.innerHTML = `✅ <b>Berhasil!</b> Dokumen tersimpan.<br>Ukuran akhir: <b>${payload.compressedSize}</b>.<br><a href="${result.fileUrl}" target="_blank" class="underline font-bold mt-1 inline-block">Buka File di Google Drive</a>`;
-        document.getElementById('uploadForm').reset();
-        compressionPanel.classList.add('hidden');
+        const linksHtml = result.uploadedFiles.map((f, idx) =>
+          `<li><a href="${f.fileUrl}" target="_blank" class="underline font-bold text-emerald-900">${idx + 1}. ${f.fileName} (${f.compressedSize})</a></li>`
+        ).join('');
+
+        alertBox.className = 'p-5 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-900 border-2 border-emerald-400 space-y-3';
+        alertBox.innerHTML = `
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200 pb-3">
+            <div>
+              <span class="text-base font-extrabold block">✅ Dokumen Berhasil Tersimpan di Google Drive!</span>
+              <span class="text-xs text-emerald-700">Gunakan Nama & Kode Kompresi ini pada menu <b>Riwayat Kompresi</b> untuk mengakses ulang file.</span>
+            </div>
+            <div class="bg-white px-4 py-2 rounded-lg border border-emerald-300 text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-500 block">Kode Kompresi Anda</span>
+              <span class="text-lg font-mono font-extrabold text-indigo-700">${result.kodeKompresi}</span>
+            </div>
+          </div>
+          <ul class="list-disc pl-5 text-xs space-y-1">${linksHtml}</ul>
+        `;
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
-      alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-red-50 text-red-700';
-      alertBox.textContent = '❌ Terjadi kesalahan: ' + error.message;
-      btnSubmit.disabled = false;
+      alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200';
+      alertBox.textContent = '❌ Gagal mengunggah ke Google Drive: ' + error.message;
+    }
+  }
+
+  document.getElementById('btnSubmitCloud').addEventListener('click', async () => {
+    const nama = document.getElementById('nama').value.trim();
+    const keterangan = document.getElementById('keterangan').value.trim();
+    const kodeKompresi = document.getElementById('kodeKompresi').value.trim();
+    if (!nama || !keterangan || !kodeKompresi) {
+      return alert('Mohon lengkapi Nama Lengkap, Keperluan, dan Kode Kompresi terlebih dahulu.');
+    }
+
+    const filesPayload = [];
+    for (const item of fileQueue) {
+      const base64Data = await new Promise((res) => {
+        const r = new FileReader();
+        r.onloadend = () => res(r.result.split(',')[1]);
+        r.readAsDataURL(item.compressedBlob);
+      });
+      const ext = item.type === 'image' ? '.jpg' : '.pdf';
+      const cleanName = item.file.name.replace(/\.[^/.]+$/, "") + "_compressed" + ext;
+      filesPayload.push({
+        fileName: cleanName,
+        mimeType: item.compressedBlob.type,
+        originalSize: formatBytes(item.file.size),
+        compressedSize: formatBytes(item.compressedBlob.size),
+        fileBase64: base64Data
+      });
+    }
+    await sendFilesToGas(filesPayload, nama, keterangan, kodeKompresi);
+  });
+
+  window.uploadMergedToCloud = async () => {
+    if (!mergedPdfBlob) return;
+    const nama = prompt("Masukkan Nama Lengkap Anda (untuk pencarian di Riwayat):", "");
+    if (!nama) return;
+    const defaultCode = document.getElementById('kodeKompresi').value || 'DOC-8899A';
+    const kodeKompresi = prompt("Catat / Sesuaikan Kode Kompresi Anda:", defaultCode);
+    if (!kodeKompresi) return;
+
+    const base64Data = await new Promise((res) => {
+      const r = new FileReader();
+      r.onloadend = () => res(r.result.split(',')[1]);
+      r.readAsDataURL(mergedPdfBlob);
+    });
+    const baseName = (document.getElementById('mergedFileName').value || 'Dokumen_Gabungan').replace(/\.pdf$/i, '') + '.pdf';
+    const totalOrigBytes = fileQueue.reduce((acc, i) => acc + i.file.size, 0);
+
+    await sendFilesToGas([{
+      fileName: baseName,
+      mimeType: 'application/pdf',
+      originalSize: formatBytes(totalOrigBytes),
+      compressedSize: formatBytes(mergedPdfBlob.size),
+      fileBase64: base64Data
+    }], nama, "Gabungan PDF", kodeKompresi);
+  };
+
+  // =========================================================================
+  // 10. PENCARIAN RIWAYAT KOMPRESI BERDASARKAN NAMA & KODE
+  // =========================================================================
+  document.getElementById('historySearchForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nama = document.getElementById('searchNama').value.trim();
+    const kode = document.getElementById('searchKode').value.trim().toUpperCase();
+    const container = document.getElementById('historyResultContainer');
+    const btn = document.getElementById('btnSearchHistory');
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Mencari...';
+    container.innerHTML = `<div class="p-4 rounded-xl bg-slate-50 text-slate-600 text-sm text-center">Mencari dokumen dengan Nama <b>${nama}</b> dan Kode <b>${kode}</b>...</div>`;
+
+    try {
+      const response = await fetch(GAS_WEB_APP_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'history',
+          nama: nama,
+          kodeKompresi: kode
+        })
+      });
+      const result = await response.json();
+
+      if (result.status === 'success') {
+        if (result.records.length === 0) {
+          container.innerHTML = `
+            <div class="p-6 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-center space-y-1">
+              <p class="font-bold text-sm">Dokumen Tidak Ditemukan</p>
+              <p class="text-xs">Pastikan ejaan Nama Pengirim dan Kode Kompresi sesuai dengan saat Anda mengunggah berkas.</p>
+            </div>
+          `;
+        } else {
+          const cardsHtml = result.records.map((rec, i) => `
+            <div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 text-[11px] font-mono font-extrabold rounded bg-indigo-100 text-indigo-800">${rec.kodeKompresi}</span>
+                  <span class="text-xs text-slate-400">${rec.tanggal}</span>
+                </div>
+                <h4 class="font-bold text-sm text-slate-900">${rec.fileName}</h4>
+                <p class="text-xs text-slate-600">Pengirim: <b>${rec.nama}</b> | Kategori: ${rec.keterangan} | Ukuran: ${rec.originalSize} ➔ <b class="text-emerald-700">${rec.compressedSize}</b></p>
+              </div>
+              <a href="${rec.fileUrl}" target="_blank" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow transition text-center shrink-0">
+                📂 Buka / Unduh dari Drive
+              </a>
+            </div>
+          `).join('');
+
+          container.innerHTML = `
+            <div class="text-xs font-bold text-emerald-700 px-1">Ditemukan ${result.records.length} dokumen yang cocok:</div>
+            ${cardsHtml}
+          `;
+        }
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (err) {
+      container.innerHTML = `<div class="p-4 rounded-xl bg-red-50 text-red-700 text-sm">❌ Gagal mengambil riwayat: ${err.message}</div>`;
     } finally {
-      btnSubmit.textContent = 'Kirim Dokumen Terkompresi';
+      btn.disabled = false;
+      btn.textContent = '🔎 Cari Dokumen Saya';
     }
   });
 </script>
