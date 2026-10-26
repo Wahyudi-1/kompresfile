@@ -1,0 +1,70 @@
+/* =========================================================================
+   STYLE.CSS - TEMA LAB FUTURISTIK (NEON DARK MODE) & OPTIMASI FULLSCREEN HP
+   ========================================================================= */
+
+html, body {
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Tema Lab Futuristik (High-Contrast Neon Dark Mode) */
+body.futuristic-lab {
+  background-color: #050914 !important;
+  color: #e2e8f0 !important;
+  background-image: 
+    radial-gradient(circle at 15% 20%, rgba(6, 182, 212, 0.09) 0%, transparent 35%),
+    radial-gradient(circle at 85% 80%, rgba(99, 102, 241, 0.09) 0%, transparent 35%);
+}
+
+body.futuristic-lab .bg-white {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+  border-color: rgba(6, 182, 212, 0.28) !important;
+}
+
+body.futuristic-lab .bg-slate-100,
+body.futuristic-lab .bg-slate-50,
+body.futuristic-lab .bg-indigo-50\/30,
+body.futuristic-lab .bg-indigo-50\/60,
+body.futuristic-lab .bg-indigo-50 {
+  background-color: #131c31 !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+}
+
+body.futuristic-lab .text-slate-800,
+body.futuristic-lab .text-slate-900,
+body.futuristic-lab .text-indigo-950,
+body.futuristic-lab .text-indigo-900 {
+  color: #38bdf8 !important;
+}
+
+body.futuristic-lab .text-slate-600,
+body.futuristic-lab .text-slate-700,
+body.futuristic-lab .text-slate-500,
+body.futuristic-lab .text-indigo-700 {
+  color: #94a3b8 !important;
+}
+
+body.futuristic-lab input[type="text"],
+body.futuristic-lab select,
+body.futuristic-lab textarea {
+  background-color: #090e1a !important;
+  color: #38bdf8 !important;
+  border-color: rgba(6, 182, 212, 0.4) !important;
+}
+
+body.futuristic-lab .bg-indigo-600 {
+  background: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%) !important;
+  box-shadow: 0 0 18px rgba(6, 182, 212, 0.35);
+}
+
+body.futuristic-lab .neon-border {
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.16);
+  border: 1px solid rgba(6, 182, 212, 0.42) !important;
+}
+
+/* Kanvas Tanda Tangan selalu berlatar terang agar tinta jelas */
+#signaturePad {
+  background-color: #ffffff !important;
+}
