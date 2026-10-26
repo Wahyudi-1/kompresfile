@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartdoc-modular-v8';
+const CACHE_NAME = 'smartdoc-modular-v9';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
