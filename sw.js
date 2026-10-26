@@ -1,7 +1,9 @@
-const CACHE_NAME = 'smartdoc-pwa-v6';
+const CACHE_NAME = 'smartdoc-modular-v8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
+  './style.css',
+  './app.js',
   './manifest.json',
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
@@ -11,17 +13,13 @@ const ASSETS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js'
 ];
 
-// Install & Simpan seluruh library ke Cache Perangkat
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
 });
 
-// Bersihkan cache versi lama jika ada pembaruan
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -35,7 +33,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Sajikan dari Cache terlebih dahulu saat Offline (Cache-First with Network Fallback)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
