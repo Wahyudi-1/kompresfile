@@ -4,54 +4,79 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   
-  <!-- Meta Tag Khusus Layar Penuh (Fullscreen) di HP Android & iOS -->
-  <meta name="theme-color" content="#4f46e5">
+  <!-- Meta Tag Khusus Layar Penuh (Fullscreen) Otomatis di HP -->
+  <meta name="theme-color" content="#050914">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="SmartDoc">
+  <meta name="apple-mobile-web-app-title" content="SmartDoc Lab">
   <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/337/337946.png">
 
-  <title>SmartDoc Studio PWA: Kompres, TTD, OCR Word & Offline App</title>
+  <title>SmartDoc Studio v8.0: Scanner Kamera, OCR Word, IndexedDB & Lab Futuristik</title>
+  
+  <!-- Tailwind CSS & Custom Stylesheet -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Library PDF.js & jsPDF -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Library Eksternal (PDF.js, jsPDF, Tesseract OCR, Docx) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- Library Tesseract.js v5 untuk OCR Client-Side -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <!-- Library docx untuk Ekspor ke Microsoft Word (.docx) -->
   <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 </head>
-<body class="bg-slate-100 min-h-screen py-4 sm:py-8 px-2 sm:px-4 font-sans text-slate-800 select-none sm:select-auto">
+<body class="bg-slate-100 min-h-screen py-3 sm:py-6 px-2 sm:px-4 font-sans text-slate-800 select-none sm:select-auto transition-colors duration-300">
 
-  <div class="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+  <div class="max-w-6xl mx-auto space-y-4">
     
-    <!-- TOP BAR: STATUS OFFLINE/ONLINE, FULLSCREEN HP & TOMBOL INSTALL APLIKASI -->
-    <div class="bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow flex flex-wrap items-center justify-between gap-2 text-xs">
-      <div class="flex items-center gap-2">
-        <span id="networkDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span id="networkText" class="font-bold text-slate-200">Mode Online (Siap digunakan Offline)</span>
+    <!-- TOP BAR: STATUS OFFLINE, ANTREAN INDEXEDDB, TEMA LAB FUTURISTIK & INSTALL OTOMATIS -->
+    <div class="bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-lg border border-slate-700 flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex items-center gap-2">
+          <span id="networkDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="networkText" class="font-bold text-slate-200">Online (PWA Ready)</span>
+        </div>
+
+        <!-- Badge Antrean Offline IndexedDB -->
+        <div id="offlineQueueBadgeWrap" class="hidden flex items-center gap-2 bg-amber-500/20 border border-amber-400/50 text-amber-300 px-2.5 py-1 rounded-lg">
+          <span>📦 Antrean Offline: <b id="offlineQueueCount">0</b> paket</span>
+          <button type="button" onclick="syncOfflineQueueNow()" class="px-2 py-0.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold rounded text-[11px] transition">
+            🔄 Sync Sekarang
+          </button>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <button type="button" id="btnToggleFullscreen" onclick="toggleFullScreenManual()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg font-bold text-slate-200 transition flex items-center gap-1">
-          <span>⛶</span> <span id="fsBtnText">Layar Penuh</span>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <!-- Tombol Switch Tema Lab Futuristik / Dark Mode -->
+        <button type="button" onclick="toggleFuturisticTheme()" id="btnThemeToggle" class="px-3 py-1.5 bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/50 rounded-lg font-bold text-cyan-300 transition flex items-center gap-1.5 shadow-sm">
+          <span id="themeIcon">⚡</span> <span id="themeBtnText">Mode Lab Futuristik</span>
         </button>
-        <button type="button" id="btnInstallApp" class="hidden px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold rounded-lg shadow transition flex items-center gap-1">
-          <span>📲</span> Install Aplikasi (Offline)
+
+        <!-- Tombol Install Aplikasi PWA ke HP -->
+        <button type="button" id="btnInstallApp" onclick="triggerDirectAppInstall()" class="px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold rounded-lg shadow transition flex items-center gap-1.5">
+          <span>📲</span> <span id="installBtnLabel">Install Aplikasi di HP</span>
         </button>
       </div>
     </div>
 
-    <!-- HEADER & NAVIGASI 5 TAB UTAMA -->
-    <div class="bg-white rounded-2xl shadow-md overflow-hidden border border-slate-200">
+    <!-- MAIN CARD -->
+    <div id="mainAppCard" class="bg-white rounded-2xl shadow-md overflow-hidden border border-slate-200 neon-border">
       <div class="bg-indigo-600 p-5 sm:p-6 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 class="text-xl sm:text-2xl font-bold">SmartDoc Studio Ultimate (PWA)</h1>
-          <p class="text-indigo-100 text-xs sm:text-sm mt-1">Kompresi, Pilih Halaman, Drag TTD, Konversi OCR ke Word (.docx) & PDF, Mendukung Mode Offline.</p>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight">SmartDoc Studio v8.0</h1>
+            <span class="px-2.5 py-0.5 text-[10px] font-extrabold uppercase bg-cyan-400 text-slate-950 rounded-full shadow">Cyber-Lab PWA</span>
+          </div>
+          <p class="text-indigo-100 text-xs sm:text-sm mt-1">Scanner Kamera Auto-Crop, Kompresi Target, Drag TTD, OCR Word (.docx) & IndexedDB Offline Sync.</p>
         </div>
-        <div class="bg-indigo-700/70 px-4 py-2 rounded-xl border border-indigo-400/30 text-right shrink-0">
-          <span class="text-xs text-indigo-200 block">Status Antrean Berkas</span>
-          <span id="readyCountBadge" class="text-lg font-extrabold text-white">0 / 0 Siap</span>
+        <div class="flex items-center gap-2 shrink-0">
+          <button type="button" onclick="openCameraScanner('queue')" class="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition flex items-center gap-1.5">
+            <span>📷</span> Scan Kamera & Auto-Crop
+          </button>
+          <div class="bg-slate-950/40 px-3.5 py-2 rounded-xl border border-white/20 text-right">
+            <span class="text-[10px] text-indigo-100 block">Berkas Siap</span>
+            <span id="readyCountBadge" class="text-base font-extrabold text-white">0 / 0</span>
+          </div>
         </div>
       </div>
 
@@ -79,11 +104,10 @@
       <!-- =============================================================== -->
       <div id="workspaceArea" class="p-4 sm:p-6 space-y-6">
         
-        <!-- INFO BANNER -->
         <div id="modeBanner" class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-start gap-3">
           <span class="text-lg">🔒</span>
           <div id="modeBannerText">
-            <b>Mode Mandiri Aktif (Bisa Digunakan 100% Offline):</b> Pilih halaman PDF, atur posisi tanda tangan secara bebas dengan Drag & Drop, kompres ukuran, dan unduh langsung ke HP/Laptop.
+            <b>Mode Mandiri Aktif (Bisa Digunakan 100% Offline):</b> Ambil foto dokumen via <b>Scan Kamera & Auto-Crop</b>, bubuhkan tanda tangan Drag & Drop, kompres ukuran, dan unduh langsung ke perangkat.
           </div>
         </div>
 
@@ -135,7 +159,7 @@
                   </label>
                 </div>
               </div>
-              <div class="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 overflow-hidden relative">
+              <div class="border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden relative">
                 <canvas id="signaturePad" width="460" height="150" class="w-full h-[150px] cursor-crosshair touch-none"></canvas>
               </div>
               <p class="text-[11px] text-slate-400">Gunakan jari, mouse, atau S-Pen / Stylus untuk menggambar tanda tangan.</p>
@@ -186,7 +210,7 @@
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 class="font-bold text-amber-950 text-sm">Pengaturan Penggabungan Dokumen (PDF Merger)</h3>
-              <p class="text-xs text-amber-800">Pilih halaman tertentu pada masing-masing PDF di bawah sebelum digabung menjadi 1 file.</p>
+              <p class="text-xs text-amber-800">Pilih halaman tertentu pada masing-masing PDF atau tambahkan hasil Scan Kamera sebelum digabung menjadi 1 PDF.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <input type="text" id="mergedFileName" value="Dokumen_Gabungan" class="px-3 py-2 text-xs font-semibold border border-amber-300 rounded-lg bg-white outline-none">
@@ -199,22 +223,32 @@
           </div>
         </div>
 
-        <!-- DROPZONE MULTI-FILE -->
-        <div class="border-2 border-dashed border-indigo-300 rounded-2xl p-6 sm:p-7 text-center bg-indigo-50/30 hover:bg-indigo-50/70 transition cursor-pointer" onclick="document.getElementById('fileInput').click()">
-          <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden">
-          <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+        <!-- DROPZONE MULTI-FILE & TOMBOL SCANNER KAMERA -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-2 border-2 border-dashed border-indigo-300 rounded-2xl p-6 text-center bg-indigo-50/30 hover:bg-indigo-50/70 transition cursor-pointer flex flex-col items-center justify-center" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden">
+            <div class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-indigo-100 text-indigo-600 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <p class="text-indigo-700 font-bold text-sm sm:text-base">Pilih File PDF atau Gambar dari Perangkat</p>
+            <p class="text-xs text-slate-500 mt-1">Mendukung Multi-Upload (JPG, PNG, WebP, dan PDF)</p>
           </div>
-          <p class="text-indigo-700 font-bold text-sm sm:text-base">Klik untuk memilih File PDF atau Gambar</p>
-          <p class="text-xs text-slate-500 mt-1">Mendukung Multi-Upload, Seleksi Halaman PDF, dan Penempelan TTD Digital</p>
+
+          <div onclick="openCameraScanner('queue')" class="border-2 border-dashed border-emerald-400 rounded-2xl p-6 text-center bg-emerald-50/30 hover:bg-emerald-50/70 transition cursor-pointer flex flex-col items-center justify-center">
+            <div class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-emerald-100 text-emerald-700 mb-2 text-xl">
+              📷
+            </div>
+            <p class="text-emerald-700 font-bold text-sm sm:text-base">Buka Kamera & Auto-Crop</p>
+            <p class="text-xs text-slate-500 mt-1">Potong tepi kertas otomatis & filter tajam</p>
+          </div>
         </div>
 
         <!-- ACTION BAR MASSAL -->
         <div id="batchActionBar" class="hidden flex flex-wrap items-center justify-between gap-3 bg-slate-800 text-white p-4 rounded-xl">
           <div class="text-sm">
-            <span class="font-bold" id="totalFilesText">0 File</span> dalam daftar.
+            <span class="font-bold" id="totalFilesText">0 File</span> dalam daftar antrean.
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button type="button" id="btnCompressAll" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold rounded-lg shadow transition">
@@ -248,7 +282,7 @@
                 ⬇️ Unduh PDF Gabungan
               </button>
               <button type="button" onclick="uploadMergedToCloud()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition">
-                ☁️ Simpan ke Google Drive
+                ☁️ Simpan ke Drive / Antrean Offline
               </button>
             </div>
           </div>
@@ -261,7 +295,7 @@
           </button>
 
           <button type="button" id="btnSubmitCloud" disabled class="hidden w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-md transition text-sm sm:text-base">
-            ☁️ Kirim Semua Dokumen ke Google Drive (0 File)
+            ☁️ Kirim Semua Dokumen ke Google Drive / Simpan di IndexedDB Offline (0 File)
           </button>
         </div>
 
@@ -269,17 +303,19 @@
       </div>
 
       <!-- =============================================================== -->
-      <!-- TAB 3: KONVERSI OCR (SCAN PDF / GAMBAR KE WORD .DOCX & PDF)     -->
+      <!-- TAB 3: KONVERSI OCR (SCAN KAMERA / PDF KE WORD .DOCX & PDF)     -->
       <!-- =============================================================== -->
       <div id="ocrArea" class="hidden p-4 sm:p-6 space-y-6">
-        <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 space-y-3">
+        <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 space-y-4">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h2 class="text-lg font-bold text-indigo-950">🔤 Konversi PDF Gambar / Scan ke Microsoft Word (.docx) & PDF Teks</h2>
-              <p class="text-xs text-indigo-700 mt-0.5">Mengekstrak teks dari dokumen hasil scan/foto menggunakan AI OCR, lalu mengekspornya ke dokumen <b>Microsoft Word (.docx)</b> atau <b>PDF Teks</b>.</p>
+              <h2 class="text-lg font-bold text-indigo-950">🔤 Konversi Scan Kamera / PDF Gambar ke Word (.docx) & PDF Teks</h2>
+              <p class="text-xs text-indigo-700 mt-0.5">Ambil foto dokumen langsung via kamera dengan Auto-Crop atau pilih file PDF/Gambar untuk diekstrak menjadi Word (.docx).</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-              <label class="text-xs font-bold text-indigo-900">Bahasa:</label>
+              <button type="button" onclick="openCameraScanner('ocr')" class="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs rounded-xl shadow transition">
+                📷 Foto & Crop untuk OCR
+              </button>
               <select id="ocrLang" class="px-3 py-2 text-xs font-bold border border-indigo-300 rounded-xl bg-white outline-none">
                 <option value="ind+eng" selected>Indonesia + Inggris</option>
                 <option value="ind">Bahasa Indonesia</option>
@@ -288,7 +324,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div class="col-span-2">
               <input type="file" id="ocrFileInput" accept="application/pdf,image/jpeg,image/png,image/webp" class="w-full text-xs bg-white border border-indigo-200 rounded-xl p-2 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700">
             </div>
@@ -297,7 +333,7 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between pt-2">
+          <div class="flex items-center justify-between pt-1">
             <button type="button" id="btnStartOcr" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow transition">
               🚀 Mulai Pemindaian Teks (OCR Sekarang)
             </button>
@@ -311,15 +347,14 @@
           </div>
         </div>
 
-        <!-- Hasil Teks OCR & Tombol Ekspor ke Word (.docx) / PDF -->
         <div id="ocrResultBox" class="hidden space-y-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
             <div>
               <h3 class="font-bold text-sm text-slate-800">Editor Hasil Pembacaan Teks Dokumen:</h3>
-              <p class="text-xs text-slate-500">Anda dapat mengedit atau merapikan teks di bawah ini sebelum mengunduhnya ke format Word (.docx) atau PDF.</p>
+              <p class="text-xs text-slate-500">Anda dapat mengedit teks di bawah ini sebelum mengunduhnya ke format Word (.docx) atau PDF.</p>
             </div>
             <div class="flex items-center gap-2">
-              <input type="text" id="ocrExportFileName" value="Hasil_Konversi_OCR" placeholder="Nama file ekspor..." class="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg font-semibold">
+              <input type="text" id="ocrExportFileName" value="Hasil_Konversi_OCR" class="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg font-semibold">
               <button type="button" onclick="copyOcrText()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg shrink-0">
                 📋 Salin Teks
               </button>
@@ -329,11 +364,8 @@
           <textarea id="ocrTextOutput" rows="12" class="w-full p-3.5 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono leading-relaxed focus:ring-2 focus:ring-indigo-500 outline-none select-text"></textarea>
 
           <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            <div class="text-xs font-bold text-slate-700">
-              Pilih Format Ekspor Dokumen:
-            </div>
+            <div class="text-xs font-bold text-slate-700">Pilih Format Ekspor Dokumen:</div>
             <div class="flex flex-wrap gap-2">
-              <!-- TOMBOL EKSPOR KE MICROSOFT WORD (.DOCX) -->
               <button type="button" onclick="exportOcrToDocx()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow transition flex items-center gap-1.5">
                 <span>📝</span> Unduh Microsoft Word (.docx)
               </button>
@@ -349,23 +381,37 @@
       </div>
 
       <!-- =============================================================== -->
-      <!-- TAB 5: RIWAYAT KOMPRESI & CETAK ULANG KARTU BUKTI               -->
+      <!-- TAB 5: RIWAYAT CLOUD & MANAJEMEN ANTREAN OFFLINE INDEXEDDB      -->
       <!-- =============================================================== -->
       <div id="historyArea" class="hidden p-4 sm:p-6 space-y-6">
+        
+        <div id="indexedDbSection" class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">📦 Brankas Antrean Offline (IndexedDB Browser)</h3>
+              <p class="text-xs text-slate-500">Dokumen yang di-submit saat tidak ada internet disimpan aman di sini dan otomatis terkirim saat kembali Online.</p>
+            </div>
+            <button type="button" onclick="syncOfflineQueueNow()" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold rounded-xl shadow transition">
+              🔄 Kirim Semua Antrean Sekarang
+            </button>
+          </div>
+          <div id="indexedDbListContainer" class="space-y-2 text-xs text-slate-600"></div>
+        </div>
+
         <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-6 space-y-4">
           <div>
-            <h2 class="text-lg font-bold text-indigo-950">🔍 Cari Riwayat Dokumen & Cetak Kartu Bukti</h2>
+            <h2 class="text-lg font-bold text-indigo-950">🔍 Cari Riwayat Dokumen Cloud & Cetak Kartu Bukti</h2>
             <p class="text-xs text-indigo-700 mt-0.5">Masukkan <b>Nama Pengirim</b> dan <b>Kode Kompresi</b> untuk mengunduh ulang file atau mencetak Kartu Bukti Upload PDF.</p>
           </div>
 
           <form id="historySearchForm" class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Nama Pengirim *</label>
-              <input type="text" id="searchNama" required placeholder="Contoh: Budi Santoso" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+              <input type="text" id="searchNama" required placeholder="Contoh: Budi Santoso" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm bg-white outline-none">
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Kode Kompresi *</label>
-              <input type="text" id="searchKode" required placeholder="Contoh: DOC-8492A" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-mono font-bold uppercase bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+              <input type="text" id="searchKode" required placeholder="Contoh: DOC-8492A" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-mono font-bold uppercase bg-white outline-none">
             </div>
             <div class="flex items-end">
               <button type="submit" id="btnSearchHistory" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition text-sm">
@@ -378,6 +424,68 @@
         <div id="historyResultContainer" class="space-y-3"></div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- MODAL SCANNER KAMERA LANGSUNG + AUTO-CROP -->
+  <div id="cameraScannerModal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-5">
+    <div class="bg-slate-900 text-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] border border-cyan-500/40">
+      <div class="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-sm sm:text-base text-cyan-400">📷 Smart Document Scanner & Auto-Crop</h3>
+          <p class="text-[11px] text-slate-400" id="scannerStepSubtitle">Arahkan kamera ke dokumen kertas, lalu tekan Ambil Foto.</p>
+        </div>
+        <button type="button" onclick="closeCameraScanner()" class="px-3 py-1.5 bg-slate-800 hover:bg-red-600 rounded-lg text-xs font-bold transition">
+          ✕ Tutup Kamera
+        </button>
+      </div>
+
+      <div id="cameraLiveStep" class="relative bg-black flex-1 flex items-center justify-center min-h-[340px] max-h-[68vh] overflow-hidden">
+        <video id="cameraVideoEl" autoplay playsinline muted class="max-w-full max-h-[66vh] object-contain"></video>
+        <div class="absolute inset-6 sm:inset-10 border-2 border-dashed border-cyan-400/70 rounded-xl pointer-events-none flex items-end justify-center pb-3">
+          <span class="bg-slate-950/80 text-cyan-300 text-[11px] font-bold px-3 py-1 rounded-full">Posisikan Dokumen di Dalam Area Ini</span>
+        </div>
+      </div>
+
+      <div id="cameraCropStep" class="hidden p-4 overflow-auto bg-slate-950 flex-1 flex flex-col items-center justify-center">
+        <div id="cropStageWrapper" class="relative inline-block border border-slate-700 shadow-2xl select-none overflow-hidden">
+          <canvas id="scannerRawCanvas" class="block max-w-full max-h-[58vh]"></canvas>
+          <div id="cropSelectionBox" class="absolute border-2 border-cyan-400 bg-cyan-400/10 cursor-move touch-none" style="left: 8%; top: 8%; width: 84%; height: 84%;">
+            <span class="absolute -top-6 left-0 bg-cyan-400 text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded shadow">Area Auto-Crop (Geser Tepi/Sudut)</span>
+            <div id="cropResizeHandle" class="w-6 h-6 bg-cyan-400 border-2 border-slate-950 rounded-full absolute -right-3 -bottom-3 cursor-se-resize shadow-lg"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 py-3.5 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <div id="cameraLiveControls" class="w-full flex items-center justify-between">
+          <button type="button" onclick="switchCameraFacing()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl">
+            🔄 Putar Kamera
+          </button>
+          <button type="button" onclick="captureCameraFrame()" class="px-6 py-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition">
+            📸 Ambil Foto & Deteksi Tepi Otomatis
+          </button>
+          <div class="w-20"></div>
+        </div>
+
+        <div id="cameraCropControls" class="hidden w-full flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="retakeCameraPhoto()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl">
+              ↩️ Foto Ulang
+            </button>
+            <button type="button" onclick="autoDetectDocumentEdges()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold rounded-xl">
+              ✨ Auto-Crop Tepi Kertas
+            </button>
+            <label class="flex items-center gap-1.5 text-xs font-bold text-cyan-300 bg-slate-900 border border-cyan-500/40 px-3 py-2 rounded-xl cursor-pointer">
+              <input type="checkbox" id="docEnhanceFilter" checked class="rounded text-cyan-400">
+              <span>Filter Dokumen Tajam</span>
+            </label>
+          </div>
+          <button type="button" onclick="applyCropAndSaveScan()" class="px-5 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition">
+            ✅ Gunakan Hasil Scan Ini
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -456,1357 +564,7 @@
     </div>
   </div>
 
-<script>
-  // =========================================================================
-  // KONFIGURASI URL WEB APP GOOGLE APPS SCRIPT
-  // =========================================================================
-  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxES-PNGaytk74AvtqVw1U8iQ--NS2V_Q44C48VUNrOczjXZm98orD-xx-sIP5R0sOl/exec";
-
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-  // =========================================================================
-  // 0. SISTEM AUTO-FULLSCREEN HP, PWA INSTALLER & STATUS OFFLINE/ONLINE
-  // =========================================================================
-  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
-
-  function enterFullScreen() {
-    const docEl = document.documentElement;
-    const requestFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
-    if (requestFs && !document.fullscreenElement && !document.webkitFullscreenElement) {
-      requestFs.call(docEl).catch(() => {});
-    }
-  }
-
-  window.toggleFullScreenManual = () => {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      enterFullScreen();
-    } else {
-      const exitFs = document.exitFullscreen || document.webkitExitFullscreen;
-      if (exitFs) exitFs.call(document).catch(() => {});
-    }
-  };
-
-  document.addEventListener('fullscreenchange', () => {
-    const fsBtnText = document.getElementById('fsBtnText');
-    if (document.fullscreenElement) {
-      fsBtnText.textContent = 'Keluar Layar Penuh';
-    } else {
-      fsBtnText.textContent = 'Layar Penuh';
-    }
-  });
-
-  // Otomatis memicu Fullscreen pada sentuhan/klik pertama ketika dibuka di HP
-  if (isMobileDevice) {
-    const triggerMobileFs = () => {
-      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        enterFullScreen();
-      }
-    };
-    document.addEventListener('pointerdown', triggerMobileFs, { passive: true });
-    document.addEventListener('touchend', triggerMobileFs, { passive: true });
-  }
-
-  // Registrasi Service Worker untuk Mode Offline
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
-    });
-  }
-
-  // Deteksi Tombol Install PWA
-  let deferredInstallPrompt = null;
-  const btnInstallApp = document.getElementById('btnInstallApp');
-
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    btnInstallApp.classList.remove('hidden');
-  });
-
-  btnInstallApp.addEventListener('click', async () => {
-    if (!deferredInstallPrompt) return;
-    deferredInstallPrompt.prompt();
-    const { outcome } = await deferredInstallPrompt.userChoice;
-    if (outcome === 'accepted') {
-      btnInstallApp.classList.add('hidden');
-    }
-    deferredInstallPrompt = null;
-  });
-
-  // Deteksi Status Jaringan (Online / Offline)
-  function updateNetworkIndicator() {
-    const dot = document.getElementById('networkDot');
-    const txt = document.getElementById('networkText');
-    if (navigator.onLine) {
-      dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
-      txt.textContent = 'Mode Online (Siap digunakan Offline)';
-    } else {
-      dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
-      txt.textContent = 'Mode Offline Aktif (Kompresi, Gabung PDF & TTD tetap berjalan 100%)';
-    }
-  }
-  window.addEventListener('online', updateNetworkIndicator);
-  window.addEventListener('offline', updateNetworkIndicator);
-  updateNetworkIndicator();
-
-  // =========================================================================
-  // STATE UTAMA APLIKASI
-  // =========================================================================
-  let currentMode = 'local';
-  let fileQueue = [];
-  let mergedPdfBlob = null;
-  let mergedTotalPages = 0;
-  let hasSignatureDrawn = false;
-  let sigPosPercent = { x: 0.72, y: 0.78 };
-  let lastReceiptData = null;
-  let ocrPagesCache = [];
-  let pdfPreviewState = { mode: 'compare', origDoc: null, compDoc: null, pageNum: 1, totalPages: 1, keptPagesMap: [] };
-
-  const fileInput = document.getElementById('fileInput');
-  const fileListContainer = document.getElementById('fileListContainer');
-  const batchActionBar = document.getElementById('batchActionBar');
-
-  function formatBytes(bytes) {
-    if (bytes < 1024) return bytes + " B";
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
-    else return (bytes / 1048576).toFixed(2) + " MB";
-  }
-
-  window.generateNewAccessCode = () => {
-    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-    let code = 'DOC-';
-    for (let i = 0; i < 5; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
-    document.getElementById('kodeKompresi').value = code;
-  };
-  generateNewAccessCode();
-
-  window.markAllPending = () => {
-    fileQueue.forEach(item => { item.status = 'pending'; item.compressedBlob = null; });
-    renderQueueUI();
-  };
-
-  // =========================================================================
-  // 1. KANVAS TANDA TANGAN & DRAG-AND-DROP POSITIONER
-  // =========================================================================
-  const sigCanvas = document.getElementById('signaturePad');
-  const sigCtx = sigCanvas.getContext('2d');
-  let isDrawingSig = false;
-
-  sigCtx.strokeStyle = '#0f172a';
-  sigCtx.lineWidth = 2.6;
-  sigCtx.lineCap = 'round';
-  sigCtx.lineJoin = 'round';
-
-  function getSigPointerPos(e) {
-    const rect = sigCanvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-      x: (clientX - rect.left) * (sigCanvas.width / rect.width),
-      y: (clientY - rect.top) * (sigCanvas.height / rect.height)
-    };
-  }
-
-  sigCanvas.addEventListener('pointerdown', (e) => {
-    isDrawingSig = true;
-    hasSignatureDrawn = true;
-    const pos = getSigPointerPos(e);
-    sigCtx.beginPath();
-    sigCtx.moveTo(pos.x, pos.y);
-  });
-
-  sigCanvas.addEventListener('pointermove', (e) => {
-    if (!isDrawingSig) return;
-    const pos = getSigPointerPos(e);
-    sigCtx.lineTo(pos.x, pos.y);
-    sigCtx.stroke();
-  });
-
-  window.addEventListener('pointerup', () => { isDrawingSig = false; });
-
-  window.clearSignatureCanvas = () => {
-    sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
-    hasSignatureDrawn = false;
-    markAllPending();
-  };
-
-  document.getElementById('sigUploadInput').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        clearSignatureCanvas();
-        const ratio = Math.min(sigCanvas.width / img.width, sigCanvas.height / img.height) * 0.85;
-        const w = img.width * ratio, h = img.height * ratio;
-        sigCtx.drawImage(img, (sigCanvas.width - w) / 2, (sigCanvas.height - h) / 2, w, h);
-        hasSignatureDrawn = true;
-        markAllPending();
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-
-  window.toggleSignaturePanel = (fromCheckbox = false) => {
-    const cb = document.getElementById('enableSignature');
-    if (!fromCheckbox) cb.checked = !cb.checked;
-    const body = document.getElementById('signatureConfigBody');
-    const badge = document.getElementById('sigStatusBadge');
-
-    if (cb.checked) {
-      body.classList.remove('hidden');
-      badge.textContent = 'Aktif';
-      badge.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700';
-    } else {
-      body.classList.add('hidden');
-      badge.textContent = 'Nonaktif';
-      badge.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-slate-200 text-slate-600';
-    }
-    markAllPending();
-  };
-
-  window.openSignaturePositioner = async () => {
-    if (!hasSignatureDrawn) return alert('Silakan gambar atau upload tanda tangan Anda terlebih dahulu.');
-
-    const bgCanvas = document.getElementById('sigBgPageCanvas');
-    const bgCtx = bgCanvas.getContext('2d');
-
-    if (fileQueue.length > 0) {
-      const firstItem = fileQueue[0];
-      if (firstItem.type === 'image') {
-        const img = await new Promise((res) => {
-          const r = new FileReader();
-          r.onload = e => { const im = new Image(); im.onload = () => res(im); im.src = e.target.result; };
-          r.readAsDataURL(firstItem.file);
-        });
-        const maxW = 650;
-        const ratio = Math.min(1, maxW / img.width);
-        bgCanvas.width = Math.round(img.width * ratio);
-        bgCanvas.height = Math.round(img.height * ratio);
-        bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
-      } else {
-        const buf = await firstItem.file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-        const keepPages = parsePageSelection(firstItem.pageSelection, pdf.numPages);
-        const targetPageSetting = document.getElementById('sigTargetPage').value;
-        const previewPageNum = targetPageSetting === 'first' ? keepPages[0] : keepPages[keepPages.length - 1];
-        const page = await pdf.getPage(previewPageNum || 1);
-        const vp = page.getViewport({ scale: 1.0 });
-        bgCanvas.width = vp.width; bgCanvas.height = vp.height;
-        await page.render({ canvasContext: bgCtx, viewport: vp }).promise;
-      }
-    } else {
-      bgCanvas.width = 595; bgCanvas.height = 842;
-      bgCtx.fillStyle = '#ffffff'; bgCtx.fillRect(0, 0, 595, 842);
-      bgCtx.fillStyle = '#cbd5e1';
-      for (let y = 80; y < 700; y += 28) bgCtx.fillRect(50, y, y % 56 === 0 ? 420 : 495, 10);
-    }
-
-    const scaleRatio = parseFloat(document.getElementById('sigScaleSize').value) || 0.22;
-    const dragBox = document.getElementById('draggableSigBox');
-    dragBox.style.width = `${scaleRatio * 100}%`;
-    dragBox.style.left = `${sigPosPercent.x * 100}%`;
-    dragBox.style.top = `${sigPosPercent.y * 100}%`;
-
-    document.getElementById('draggableSigImg').src = sigCanvas.toDataURL('image/png');
-    document.getElementById('draggableSigName').textContent = document.getElementById('sigSignerName').value.trim();
-    document.getElementById('sigDragModal').classList.remove('hidden');
-  };
-
-  window.closeSignaturePositioner = () => {
-    document.getElementById('sigDragModal').classList.add('hidden');
-    document.getElementById('sigCoordDisplay').textContent =
-      `Kustom Drag & Drop (X: ${Math.round(sigPosPercent.x * 100)}%, Y: ${Math.round(sigPosPercent.y * 100)}%)`;
-    markAllPending();
-  };
-
-  const dragBox = document.getElementById('draggableSigBox');
-  const stageWrapper = document.getElementById('sigStageWrapper');
-  let isDraggingBox = false;
-  let dragOffset = { x: 0, y: 0 };
-
-  dragBox.addEventListener('pointerdown', (e) => {
-    isDraggingBox = true;
-    const boxRect = dragBox.getBoundingClientRect();
-    dragOffset.x = e.clientX - boxRect.left;
-    dragOffset.y = e.clientY - boxRect.top;
-    dragBox.setPointerCapture(e.pointerId);
-  });
-
-  dragBox.addEventListener('pointermove', (e) => {
-    if (!isDraggingBox) return;
-    const stageRect = stageWrapper.getBoundingClientRect();
-    const boxRect = dragBox.getBoundingClientRect();
-
-    let newLeft = e.clientX - stageRect.left - dragOffset.x;
-    let newTop = e.clientY - stageRect.top - dragOffset.y;
-
-    newLeft = Math.max(0, Math.min(newLeft, stageRect.width - boxRect.width));
-    newTop = Math.max(0, Math.min(newTop, stageRect.height - boxRect.height));
-
-    sigPosPercent.x = newLeft / stageRect.width;
-    sigPosPercent.y = newTop / stageRect.height;
-
-    dragBox.style.left = `${sigPosPercent.x * 100}%`;
-    dragBox.style.top = `${sigPosPercent.y * 100}%`;
-  });
-
-  dragBox.addEventListener('pointerup', () => { isDraggingBox = false; });
-
-  function stampSignatureOnCanvas(targetCanvas) {
-    const enabled = document.getElementById('enableSignature').checked;
-    if (!enabled || !hasSignatureDrawn) return;
-
-    const ctx = targetCanvas.getContext('2d');
-    const scaleRatio = parseFloat(document.getElementById('sigScaleSize').value) || 0.22;
-    const signerName = document.getElementById('sigSignerName').value.trim();
-
-    const sigW = targetCanvas.width * scaleRatio;
-    const sigH = sigW * (sigCanvas.height / sigCanvas.width);
-    const x = targetCanvas.width * sigPosPercent.x;
-    const y = targetCanvas.height * sigPosPercent.y;
-
-    ctx.drawImage(sigCanvas, x, y, sigW, sigH);
-
-    if (signerName) {
-      const fontSize = Math.max(11, Math.round(targetCanvas.width * 0.015));
-      ctx.font = `bold ${fontSize}px sans-serif`;
-      ctx.fillStyle = '#0f172a';
-      ctx.textAlign = 'center';
-      ctx.fillText(signerName, x + sigW / 2, y + sigH + fontSize + 4);
-    }
-  }
-
-  // =========================================================================
-  // 2. FITUR EKSPOR HASIL OCR KE MICROSOFT WORD (.DOCX) & PDF
-  // =========================================================================
-  window.exportOcrToDocx = async () => {
-    const text = document.getElementById('ocrTextOutput').value;
-    if (!text.trim()) return alert('Tidak ada teks OCR untuk diekspor.');
-
-    const baseName = (document.getElementById('ocrExportFileName').value || 'Hasil_Konversi_OCR').replace(/\.(docx|doc|pdf)$/i, '');
-
-    // Gunakan library docx (Word OpenXML asli .docx) jika tersedia di memori
-    if (window.docx) {
-      const { Document, Packer, Paragraph, TextRun, HeadingLevel } = window.docx;
-      const lines = text.split('\n');
-      const docChildren = [];
-
-      lines.forEach(line => {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('=== HALAMAN')) {
-          docChildren.push(new Paragraph({
-            heading: HeadingLevel.HEADING_2,
-            spacing: { before: 240, after: 120 },
-            children: [new TextRun({ text: trimmed.replace(/===/g, '').trim(), bold: true, size: 26, font: 'Calibri' })]
-          }));
-        } else {
-          docChildren.push(new Paragraph({
-            spacing: { after: 120, line: 276 },
-            children: [new TextRun({ text: line, size: 22, font: 'Calibri' })]
-          }));
-        }
-      });
-
-      const doc = new Document({
-        sections: [{ properties: {}, children: docChildren }]
-      });
-
-      const blob = await Packer.toBlob(doc);
-      triggerBrowserDownload(blob, `${baseName}.docx`);
-    } else {
-      // Fallback Offline Kompatibel MS Word jika CDN docx belum ter-cache
-      const htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head><meta charset='utf-8'><title>${baseName}</title></head>
-        <body style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.5;">
-          ${text.split('\n').map(l => `<p>${l.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join('')}
-        </body></html>`;
-      const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
-      triggerBrowserDownload(blob, `${baseName}.doc`);
-    }
-  };
-
-  document.getElementById('btnStartOcr').addEventListener('click', async () => {
-    const file = document.getElementById('ocrFileInput').files[0];
-    if (!file) return alert('Pilih file PDF hasil scan atau Gambar terlebih dahulu.');
-
-    const lang = document.getElementById('ocrLang').value;
-    const rangeStr = document.getElementById('ocrPageRange').value;
-    const btn = document.getElementById('btnStartOcr');
-    const statusText = document.getElementById('ocrProgressStatus');
-    const progWrap = document.getElementById('ocrProgressWrap');
-    const progBar = document.getElementById('ocrProgressBar');
-    const resultBox = document.getElementById('ocrResultBox');
-    const textOutput = document.getElementById('ocrTextOutput');
-
-    btn.disabled = true;
-    progWrap.classList.remove('hidden');
-    resultBox.classList.add('hidden');
-    ocrPagesCache = [];
-
-    const cleanFileName = file.name.replace(/\.[^/.]+$/, "");
-    document.getElementById('ocrExportFileName').value = cleanFileName + "_OCR";
-
-    try {
-      const canvasesToRead = [];
-
-      if (file.type === 'application/pdf') {
-        statusText.textContent = 'Membaca halaman PDF...';
-        const buf = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-        const pages = parsePageSelection(rangeStr, pdf.numPages);
-
-        for (let i = 0; i < pages.length; i++) {
-          const pNum = pages[i];
-          const page = await pdf.getPage(pNum);
-          const vp = page.getViewport({ scale: 1.8 });
-          const c = document.createElement('canvas');
-          c.width = vp.width; c.height = vp.height;
-          await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
-          canvasesToRead.push({ pageNum: pNum, canvas: c });
-        }
-      } else {
-        const img = await new Promise((res, rej) => {
-          const r = new FileReader();
-          r.onload = e => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = e.target.result; };
-          r.readAsDataURL(file);
-        });
-        const c = document.createElement('canvas');
-        c.width = img.width; c.height = img.height;
-        c.getContext('2d').drawImage(img, 0, 0);
-        canvasesToRead.push({ pageNum: 1, canvas: c });
-      }
-
-      statusText.textContent = 'Memuat mesin AI OCR Tesseract...';
-      const worker = await Tesseract.createWorker(lang, 1, {
-        logger: m => {
-          if (m.status === 'recognizing text') {
-            progBar.style.width = `${Math.round(m.progress * 100)}%`;
-          }
-        }
-      });
-
-      let fullCombinedText = '';
-
-      for (let i = 0; i < canvasesToRead.length; i++) {
-        const item = canvasesToRead[i];
-        statusText.textContent = `Mengekstrak teks halaman ${i + 1} dari ${canvasesToRead.length}...`;
-        progBar.style.width = '10%';
-
-        const { data } = await worker.recognize(item.canvas);
-        const cleanPageText = data.text.trim();
-
-        ocrPagesCache.push({
-          pageNum: item.pageNum,
-          canvas: item.canvas,
-          text: cleanPageText,
-          words: data.words || []
-        });
-
-        fullCombinedText += `=== HALAMAN ${item.pageNum} ===\n${cleanPageText}\n\n`;
-      }
-
-      await worker.terminate();
-
-      textOutput.value = fullCombinedText.trim();
-      resultBox.classList.remove('hidden');
-      statusText.textContent = '✅ Selesai! Siap diekspor ke Word (.docx) atau PDF.';
-      progBar.style.width = '100%';
-
-    } catch (err) {
-      alert('Gagal menjalankan OCR: ' + err.message);
-      statusText.textContent = '❌ Gagal memproses OCR.';
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
-  window.copyOcrText = () => {
-    const txt = document.getElementById('ocrTextOutput');
-    txt.select();
-    document.execCommand('copy');
-    alert('Teks berhasil disalin ke clipboard!');
-  };
-
-  window.downloadCleanTextPdf = () => {
-    const text = document.getElementById('ocrTextOutput').value;
-    if (!text.trim()) return alert('Tidak ada teks untuk dibuat PDF.');
-    const baseName = (document.getElementById('ocrExportFileName').value || 'Hasil_OCR').replace(/\.(docx|pdf)$/i, '');
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-
-    const margin = 15;
-    const lines = doc.splitTextToSize(text, 210 - margin * 2);
-    let y = 20;
-    lines.forEach(line => {
-      if (y > 280) { doc.addPage(); y = 20; }
-      doc.text(line, margin, y);
-      y += 6;
-    });
-    doc.save(`${baseName}_Teks.pdf`);
-  };
-
-  window.downloadSearchableHybridPdf = () => {
-    if (ocrPagesCache.length === 0) return alert('Silakan jalankan proses OCR terlebih dahulu.');
-    const baseName = (document.getElementById('ocrExportFileName').value || 'Hasil_OCR').replace(/\.(docx|pdf)$/i, '');
-    const { jsPDF } = window.jspdf;
-    let doc = null;
-
-    ocrPagesCache.forEach((p, idx) => {
-      const wPt = p.canvas.width * 0.75, hPt = p.canvas.height * 0.75;
-      const orient = wPt > hPt ? 'l' : 'p';
-      if (idx === 0) doc = new jsPDF({ orientation: orient, unit: 'pt', format: [wPt, hPt], compress: true });
-      else doc.addPage([wPt, hPt], orient);
-
-      const imgData = p.canvas.toDataURL('image/jpeg', 0.72);
-      doc.addImage(imgData, 'JPEG', 0, 0, wPt, hPt, undefined, 'FAST');
-
-      p.words.forEach(w => {
-        if (!w.text || !w.bbox) return;
-        const x = w.bbox.x0 * 0.75, y = w.bbox.y1 * 0.75;
-        const boxH = Math.max(8, (w.bbox.y1 - w.bbox.y0) * 0.75);
-        doc.setFontSize(boxH);
-        doc.text(w.text, x, y, { renderingMode: 'invisible' });
-      });
-    });
-
-    doc.save(`${baseName}_Searchable.pdf`);
-  };
-
-  // =========================================================================
-  // 3. CETAK KARTU BUKTI UPLOAD PDF
-  // =========================================================================
-  window.downloadUploadReceiptPdf = (customData = null) => {
-    const data = customData || lastReceiptData;
-    if (!data) return alert('Belum ada data bukti pengumpulan.');
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-
-    doc.setFillColor(79, 70, 229);
-    doc.rect(0, 0, 210, 38, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('KARTU BUKTI PENGUMPULAN DOKUMEN DIGITAL', 15, 18);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text('SmartDoc Studio Ultimate - Tanda Terima Resmi Penyimpanan Cloud & Riwayat', 15, 27);
-
-    doc.setFillColor(238, 242, 255);
-    doc.setDrawColor(165, 180, 252);
-    doc.roundedRect(15, 46, 180, 24, 3, 3, 'FD');
-    doc.setTextColor(55, 48, 163);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('KODE AKSES RIWAYAT KOMPRESI (SIMPAN KODE INI):', 20, 54);
-    doc.setFontSize(18);
-    doc.text(data.kodeKompresi, 20, 64);
-
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(10);
-    doc.text('Nama Pengirim', 15, 82); doc.text(': ' + data.nama, 60, 82);
-    doc.text('Keperluan / Kategori', 15, 90); doc.text(': ' + data.keterangan, 60, 90);
-    doc.text('Waktu Pengumpulan', 15, 98); doc.text(': ' + data.tanggal, 60, 98);
-    doc.text('Jumlah Berkas', 15, 106); doc.text(': ' + data.files.length + ' Dokumen Terkompresi', 60, 106);
-
-    let y = 118;
-    doc.setFillColor(241, 245, 249);
-    doc.rect(15, y, 180, 9, 'F');
-    doc.setFontSize(9);
-    doc.text('No', 18, y + 6);
-    doc.text('Nama Dokumen Terkompresi', 28, y + 6);
-    doc.text('Ukuran Akhir', 125, y + 6);
-    doc.text('Status Cloud Drive', 158, y + 6);
-
-    y += 15;
-    doc.setFont('helvetica', 'normal');
-    data.files.forEach((f, idx) => {
-      if (y > 265) { doc.addPage(); y = 25; }
-      doc.setTextColor(15, 23, 42);
-      doc.text(String(idx + 1), 18, y);
-      const shortName = f.fileName.length > 48 ? f.fileName.substring(0, 45) + '...' : f.fileName;
-      doc.text(shortName, 28, y);
-      doc.text(String(f.compressedSize || '-'), 125, y);
-      doc.setTextColor(5, 150, 105);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Tersimpan', 158, y);
-      doc.setFont('helvetica', 'normal');
-
-      if (f.fileUrl) {
-        y += 4.5;
-        doc.setFontSize(7.5);
-        doc.setTextColor(79, 70, 229);
-        doc.text('Link: ' + f.fileUrl, 28, y);
-        doc.setFontSize(9);
-      }
-      doc.setDrawColor(226, 232, 240);
-      doc.line(15, y + 2.5, 195, y + 2.5);
-      y += 8.5;
-    });
-
-    doc.save(`Bukti_Upload_${data.kodeKompresi}.pdf`);
-  };
-
-  // =========================================================================
-  // 4. NAVIGASI TAB, PARSER HALAMAN, KOMPRESI, MERGE & RIWAYAT
-  // =========================================================================
-  function parsePageSelection(rangeStr, maxPages) {
-    if (!rangeStr || !rangeStr.trim()) return Array.from({ length: maxPages }, (_, i) => i + 1);
-    const pages = new Set();
-    const parts = rangeStr.split(',');
-    for (let part of parts) {
-      part = part.trim();
-      if (!part) continue;
-      if (part.includes('-')) {
-        const [startRaw, endRaw] = part.split('-').map(n => parseInt(n.trim(), 10));
-        if (!isNaN(startRaw) && !isNaN(endRaw)) {
-          const s = Math.max(1, Math.min(startRaw, endRaw));
-          const e = Math.min(maxPages, Math.max(startRaw, endRaw));
-          for (let i = s; i <= e; i++) pages.add(i);
-        }
-      } else {
-        const num = parseInt(part, 10);
-        if (!isNaN(num) && num >= 1 && num <= maxPages) pages.add(num);
-      }
-    }
-    const result = Array.from(pages).sort((a, b) => a - b);
-    return result.length > 0 ? result : Array.from({ length: maxPages }, (_, i) => i + 1);
-  }
-
-  window.switchMode = (mode) => {
-    currentMode = mode;
-    ['local', 'merge', 'ocr', 'cloud', 'history'].forEach(m => {
-      const btn = document.getElementById('tab_' + m);
-      if (m === mode) {
-        btn.className = "py-3 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-indigo-700 shadow-sm";
-      } else {
-        btn.className = "py-3 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60";
-      }
-    });
-
-    const workspaceArea = document.getElementById('workspaceArea');
-    const ocrArea = document.getElementById('ocrArea');
-    const historyArea = document.getElementById('historyArea');
-
-    workspaceArea.classList.add('hidden');
-    ocrArea.classList.add('hidden');
-    historyArea.classList.add('hidden');
-
-    if (mode === 'ocr') { ocrArea.classList.remove('hidden'); return; }
-    if (mode === 'history') { historyArea.classList.remove('hidden'); return; }
-
-    workspaceArea.classList.remove('hidden');
-
-    const banner = document.getElementById('modeBanner');
-    const bannerText = document.getElementById('modeBannerText');
-    const cloudIdentity = document.getElementById('cloudIdentitySection');
-    const mergeSettings = document.getElementById('mergeSettingsSection');
-    const btnCompressAll = document.getElementById('btnCompressAll');
-    const btnMergeNow = document.getElementById('btnMergeNow');
-    const btnDownloadAllLocal = document.getElementById('btnDownloadAllLocal');
-    const btnSubmitCloud = document.getElementById('btnSubmitCloud');
-    const mergedResultCard = document.getElementById('mergedResultCard');
-
-    if (mode === 'local') {
-      banner.className = "p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-start gap-3";
-      bannerText.innerHTML = "<b>Mode Mandiri (Bisa 100% Offline):</b> Pilih halaman PDF, geser posisi tanda tangan dengan Drag & Drop, kompres ukuran, dan unduh langsung.";
-      cloudIdentity.classList.add('hidden');
-      mergeSettings.classList.add('hidden');
-      mergedResultCard.classList.add('hidden');
-      btnCompressAll.classList.remove('hidden');
-      btnMergeNow.classList.add('hidden');
-      btnDownloadAllLocal.classList.remove('hidden');
-      btnSubmitCloud.classList.add('hidden');
-    } else if (mode === 'merge') {
-      banner.className = "p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start gap-3";
-      bannerText.innerHTML = "<b>Mode Gabung PDF & Seleksi Halaman:</b> Pilih halaman tertentu dari setiap PDF, atur urutannya, lalu gabungkan menjadi 1 file PDF utuh.";
-      cloudIdentity.classList.add('hidden');
-      mergeSettings.classList.remove('hidden');
-      btnCompressAll.classList.add('hidden');
-      btnMergeNow.classList.remove('hidden');
-      btnDownloadAllLocal.classList.add('hidden');
-      btnSubmitCloud.classList.add('hidden');
-      if (mergedPdfBlob) mergedResultCard.classList.remove('hidden');
-    } else if (mode === 'cloud') {
-      banner.className = "p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs sm:text-sm flex items-start gap-3";
-      bannerText.innerHTML = "<b>Mode Simpan ke Google Drive & Cetak Kartu Bukti:</b> Unggah dokumen terkompresi ke Google Drive dan unduh Kartu Bukti Upload PDF.";
-      cloudIdentity.classList.remove('hidden');
-      mergeSettings.classList.add('hidden');
-      mergedResultCard.classList.add('hidden');
-      btnCompressAll.classList.remove('hidden');
-      btnMergeNow.classList.add('hidden');
-      btnDownloadAllLocal.classList.add('hidden');
-      btnSubmitCloud.classList.remove('hidden');
-    }
-
-    renderQueueUI();
-  };
-
-  fileInput.addEventListener('change', async (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    if (!selectedFiles.length) return;
-
-    for (const file of selectedFiles) {
-      const isImg = file.type.startsWith('image/');
-      const isPdf = file.type === 'application/pdf';
-      if (!isImg && !isPdf) continue;
-
-      const id = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
-      const type = isImg ? 'image' : 'pdf';
-      let totalPages = 1;
-
-      if (isPdf) {
-        try {
-          const buf = await file.arrayBuffer();
-          const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
-          totalPages = pdfDoc.numPages;
-        } catch (err) { totalPages = 1; }
-      }
-
-      const options = isImg ? [
-        { label: 'Ekstra Kecil (< 150 KB)', targetKB: 140 },
-        { label: 'Sedang (150 - 350 KB)', targetKB: 300 },
-        { label: 'Tajam (350 - 700 KB)', targetKB: 600 }
-      ] : [
-        { label: 'Ringan (< 500 KB)', targetKB: 450 },
-        { label: 'Standar (500 KB - 1.2 MB)', targetKB: 1000 },
-        { label: 'Detail Tinggi (1.2 - 2.5 MB)', targetKB: 2200 }
-      ];
-
-      fileQueue.push({
-        id, file, type, totalPages,
-        pageSelection: totalPages > 1 ? `1-${totalPages}` : '1',
-        keptPagesCount: totalPages,
-        options,
-        selectedTargetKB: options[1].targetKB,
-        compressedBlob: null,
-        status: 'pending',
-        progress: 0
-      });
-    }
-
-    fileInput.value = '';
-    mergedPdfBlob = null;
-    document.getElementById('mergedResultCard').classList.add('hidden');
-    renderQueueUI();
-  });
-
-  function renderQueueUI() {
-    fileListContainer.innerHTML = '';
-    if (fileQueue.length === 0) {
-      batchActionBar.classList.add('hidden');
-      updateSummaryBadges();
-      return;
-    }
-    batchActionBar.classList.remove('hidden');
-
-    fileQueue.forEach((item, index) => {
-      const isDone = item.status === 'done' && item.compressedBlob;
-      const savingsPct = isDone ? Math.max(0, Math.round((1 - item.compressedBlob.size / item.file.size) * 100)) : 0;
-      const badgeColor = item.type === 'image' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
-
-      const optionsHtml = item.options.map(opt => `
-        <option value="${opt.targetKB}" ${Number(item.selectedTargetKB) === opt.targetKB ? 'selected' : ''}>${opt.label}</option>
-      `).join('');
-
-      const card = document.createElement('div');
-      card.className = `p-4 rounded-xl border transition ${isDone ? 'bg-emerald-50/30 border-emerald-300' : 'bg-white border-slate-200'} shadow-sm space-y-3`;
-      card.innerHTML = `
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div class="flex items-start gap-3 flex-1 min-w-0">
-            <div class="flex flex-col gap-1 shrink-0">
-              <button type="button" onclick="moveItem(${index}, -1)" ${index === 0 ? 'disabled' : ''} class="px-1.5 py-0.5 text-[10px] bg-slate-100 hover:bg-slate-200 disabled:opacity-30 rounded font-bold">▲</button>
-              <button type="button" onclick="moveItem(${index}, 1)" ${index === fileQueue.length - 1 ? 'disabled' : ''} class="px-1.5 py-0.5 text-[10px] bg-slate-100 hover:bg-slate-200 disabled:opacity-30 rounded font-bold">▼</button>
-            </div>
-            <div class="space-y-1 flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-xs font-extrabold text-indigo-600">#${index + 1}</span>
-                <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full ${badgeColor}">
-                  ${item.type === 'image' ? 'GAMBAR' : `PDF (${item.totalPages} Hal)`}
-                </span>
-                <h4 class="font-bold text-sm text-slate-800 truncate">${item.file.name}</h4>
-              </div>
-              <div class="flex items-center gap-3 text-xs text-slate-600 flex-wrap">
-                <span>Asli: <b>${formatBytes(item.file.size)}</b></span>
-                ${isDone ? `<span>➔</span><span class="text-emerald-700 font-bold">Hasil: ${formatBytes(item.compressedBlob.size)} (Hemat ${savingsPct}% | ${item.keptPagesCount} Hal)</span>` : ''}
-              </div>
-            </div>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-2 shrink-0">
-            ${currentMode !== 'merge' ? `
-              <select onchange="changeTargetSize('${item.id}', this.value)" class="text-xs font-semibold border border-slate-300 rounded-lg px-2.5 py-2 bg-white outline-none">${optionsHtml}</select>
-              <button type="button" onclick="compressSingleItem('${item.id}')" ${item.status === 'compressing' ? 'disabled' : ''} class="px-3 py-2 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 text-white text-xs font-bold rounded-lg transition">
-                ${item.status === 'compressing' ? `Proses (${item.progress}%)...` : (isDone ? 'Proses Ulang' : 'Proses & Kompres')}
-              </button>
-            ` : ''}
-            ${isDone && currentMode !== 'merge' ? `
-              <button type="button" onclick="openPreviewModal('${item.id}')" class="px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-xs font-bold rounded-lg transition">👁️ Preview</button>
-              <button type="button" onclick="downloadSingleFile('${item.id}')" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition">⬇️ Unduh</button>
-            ` : ''}
-            <button type="button" onclick="removeItem('${item.id}')" class="p-2 text-slate-400 hover:text-red-600 rounded-lg transition">✕</button>
-          </div>
-        </div>
-        ${item.type === 'pdf' ? `
-          <div class="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/80 px-3 py-2 rounded-lg">
-            <div class="text-xs text-slate-700">
-              <span class="font-bold text-indigo-900">✂️ Pilih / Hapus Halaman PDF:</span>
-              <span class="text-slate-500 ml-1">Contoh: <b>1, 3, 5-${item.totalPages}</b></span>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <input type="text" value="${item.pageSelection}" onchange="updatePageSelection('${item.id}', this.value)" class="px-2.5 py-1 text-xs font-mono font-bold border border-slate-300 rounded bg-white w-36 outline-none">
-              <span class="text-[11px] font-semibold text-slate-500">dari ${item.totalPages} hal</span>
-            </div>
-          </div>
-        ` : ''}
-      `;
-      fileListContainer.appendChild(card);
-    });
-
-    updateSummaryBadges();
-  }
-
-  window.updatePageSelection = (id, val) => {
-    const item = fileQueue.find(i => i.id === id);
-    if (item) { item.pageSelection = val; item.status = 'pending'; item.compressedBlob = null; renderQueueUI(); }
-  };
-
-  window.moveItem = (index, direction) => {
-    const targetIdx = index + direction;
-    if (targetIdx < 0 || targetIdx >= fileQueue.length) return;
-    const temp = fileQueue[index];
-    fileQueue[index] = fileQueue[targetIdx];
-    fileQueue[targetIdx] = temp;
-    mergedPdfBlob = null;
-    document.getElementById('mergedResultCard').classList.add('hidden');
-    renderQueueUI();
-  };
-
-  function updateSummaryBadges() {
-    const total = fileQueue.length;
-    const readyItems = fileQueue.filter(i => i.status === 'done' && i.compressedBlob);
-    const readyCount = readyItems.length;
-
-    document.getElementById('readyCountBadge').textContent = `${readyCount} / ${total} Siap`;
-    document.getElementById('totalFilesText').textContent = `${total} File`;
-
-    const allReady = total > 0 && readyCount === total;
-    const btnDownloadAllLocal = document.getElementById('btnDownloadAllLocal');
-    const btnSubmitCloud = document.getElementById('btnSubmitCloud');
-
-    btnDownloadAllLocal.disabled = !allReady;
-    btnDownloadAllLocal.textContent = allReady
-      ? `⬇️ Unduh Semua File Terkompresi ke Perangkat (${readyCount} File)`
-      : `Proses Semua File Terlebih Dahulu (${readyCount}/${total} Siap)`;
-
-    btnSubmitCloud.disabled = !allReady;
-    btnSubmitCloud.textContent = allReady
-      ? `☁️ Kirim Semua Dokumen ke Google Drive (${readyCount} File)`
-      : `Proses Semua File Terlebih Dahulu (${readyCount}/${total} Siap)`;
-  }
-
-  window.changeTargetSize = (id, val) => {
-    const item = fileQueue.find(i => i.id === id);
-    if (item) { item.selectedTargetKB = parseInt(val, 10); item.status = 'pending'; item.compressedBlob = null; renderQueueUI(); }
-  };
-
-  window.removeItem = (id) => { fileQueue = fileQueue.filter(i => i.id !== id); renderQueueUI(); };
-
-  document.getElementById('btnClearAll').addEventListener('click', () => {
-    fileQueue = []; mergedPdfBlob = null;
-    document.getElementById('mergedResultCard').classList.add('hidden');
-    renderQueueUI();
-  });
-
-  window.compressSingleItem = async (id) => {
-    const item = fileQueue.find(i => i.id === id);
-    if (!item) return;
-    item.status = 'compressing'; item.progress = 10; renderQueueUI();
-    try {
-      if (item.type === 'image') {
-        item.compressedBlob = await compressImageToTarget(item.file, item.selectedTargetKB);
-        item.keptPagesCount = 1;
-      } else {
-        const res = await compressPdfToTarget(item, (pct) => { item.progress = pct; renderQueueUI(); });
-        item.compressedBlob = res.blob;
-        item.keptPagesCount = res.keptCount;
-      }
-      item.status = 'done';
-    } catch (err) {
-      item.status = 'error';
-      alert(`Gagal memproses ${item.file.name}: ` + err.message);
-    }
-    renderQueueUI();
-  };
-
-  document.getElementById('btnCompressAll').addEventListener('click', async () => {
-    for (const item of fileQueue) await window.compressSingleItem(item.id);
-  });
-
-  async function compressImageToTarget(file, targetKB) {
-    const targetBytes = targetKB * 1024;
-    const sigEnabled = document.getElementById('enableSignature').checked && hasSignatureDrawn;
-    if (file.size <= targetBytes && !sigEnabled) return file;
-
-    const img = await new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = e => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = e.target.result; };
-      r.readAsDataURL(file);
-    });
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    let scale = 1.0;
-    const maxDim = Math.max(img.width, img.height);
-    if (maxDim > 2000) scale = 2000 / maxDim;
-
-    let bestBlob = null;
-    while (scale >= 0.3) {
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      stampSignatureOnCanvas(canvas);
-
-      let low = 0.15, high = 0.92;
-      for (let i = 0; i < 6; i++) {
-        const mid = (low + high) / 2;
-        const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', mid));
-        bestBlob = blob;
-        if (blob.size > targetBytes) high = mid; else low = mid;
-      }
-      if (bestBlob && bestBlob.size <= targetBytes) break;
-      scale -= 0.2;
-    }
-    return bestBlob;
-  }
-
-  async function compressPdfToTarget(item, onProgress) {
-    const arrayBuffer = await item.file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const pagesToKeep = parsePageSelection(item.pageSelection, pdf.numPages);
-
-    const budgetPerPageKB = item.selectedTargetKB / pagesToKeep.length;
-    let renderScale = 1.5, jpegQuality = 0.75;
-    if (budgetPerPageKB < 80) { renderScale = 1.0; jpegQuality = 0.5; }
-    else if (budgetPerPageKB < 180) { renderScale = 1.25; jpegQuality = 0.65; }
-    else { renderScale = 1.6; jpegQuality = 0.80; }
-
-    const sigTarget = document.getElementById('sigTargetPage').value;
-    const { jsPDF } = window.jspdf;
-    let newPdf = null;
-
-    for (let idx = 0; idx < pagesToKeep.length; idx++) {
-      const pageNum = pagesToKeep[idx];
-      if (onProgress) onProgress(Math.round(((idx + 1) / pagesToKeep.length) * 100));
-
-      const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: renderScale });
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width; canvas.height = viewport.height;
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-
-      const shouldSign = sigTarget === 'all' || (sigTarget === 'first' && idx === 0) || (sigTarget === 'last' && idx === pagesToKeep.length - 1);
-      if (shouldSign) stampSignatureOnCanvas(canvas);
-
-      const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
-      const origViewport = page.getViewport({ scale: 1.0 });
-      const orientation = origViewport.width > origViewport.height ? 'l' : 'p';
-
-      if (idx === 0) {
-        newPdf = new jsPDF({ orientation, unit: 'pt', format: [origViewport.width, origViewport.height], compress: true });
-      } else {
-        newPdf.addPage([origViewport.width, origViewport.height], orientation);
-      }
-      newPdf.addImage(imgData, 'JPEG', 0, 0, origViewport.width, origViewport.height, undefined, 'FAST');
-    }
-    return { blob: newPdf.output('blob'), keptCount: pagesToKeep.length };
-  }
-
-  document.getElementById('btnMergeNow').addEventListener('click', async () => {
-    if (fileQueue.length === 0) return alert('Tambahkan file terlebih dahulu.');
-    const btnMerge = document.getElementById('btnMergeNow');
-    const qualityPreset = document.getElementById('mergedTargetQuality').value;
-    let renderScale = 1.35, jpegQuality = 0.72;
-    if (qualityPreset === 'low') { renderScale = 1.0; jpegQuality = 0.52; }
-    else if (qualityPreset === 'high') { renderScale = 1.7; jpegQuality = 0.85; }
-
-    btnMerge.disabled = true;
-    btnMerge.textContent = '⏳ Menggabungkan Halaman...';
-
-    try {
-      const { jsPDF } = window.jspdf;
-      let mergedDoc = null, totalPageCounter = 0;
-      const sigTarget = document.getElementById('sigTargetPage').value;
-      const renderTasks = [];
-
-      for (const item of fileQueue) {
-        if (item.type === 'pdf') {
-          const buf = await item.file.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-          const pagesToKeep = parsePageSelection(item.pageSelection, pdf.numPages);
-          pagesToKeep.forEach(pNum => renderTasks.push({ type: 'pdf', pdf, pNum }));
-        } else {
-          renderTasks.push({ type: 'image', file: item.file });
-        }
-      }
-
-      for (let tIdx = 0; tIdx < renderTasks.length; tIdx++) {
-        const task = renderTasks[tIdx];
-        const shouldSign = sigTarget === 'all' || (sigTarget === 'first' && tIdx === 0) || (sigTarget === 'last' && tIdx === renderTasks.length - 1);
-
-        if (task.type === 'pdf') {
-          const page = await task.pdf.getPage(task.pNum);
-          const vp = page.getViewport({ scale: renderScale });
-          const origVp = page.getViewport({ scale: 1.0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = vp.width; canvas.height = vp.height;
-          await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-          if (shouldSign) stampSignatureOnCanvas(canvas);
-
-          const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
-          const orientation = origVp.width > origVp.height ? 'l' : 'p';
-          if (!mergedDoc) mergedDoc = new jsPDF({ orientation, unit: 'pt', format: [origVp.width, origVp.height], compress: true });
-          else mergedDoc.addPage([origVp.width, origVp.height], orientation);
-          mergedDoc.addImage(imgData, 'JPEG', 0, 0, origVp.width, origVp.height, undefined, 'FAST');
-          totalPageCounter++;
-        } else {
-          const img = await new Promise((res, rej) => {
-            const r = new FileReader();
-            r.onload = e => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = e.target.result; };
-            r.readAsDataURL(task.file);
-          });
-          const canvas = document.createElement('canvas');
-          let w = img.width, h = img.height;
-          if (Math.max(w, h) > 1600) { const r = 1600 / Math.max(w, h); w = Math.round(w * r); h = Math.round(h * r); }
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          if (shouldSign) stampSignatureOnCanvas(canvas);
-
-          const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
-          const isLandscape = w > h;
-          const pageW = isLandscape ? 841.89 : 595.28, pageH = isLandscape ? 595.28 : 841.89;
-          if (!mergedDoc) mergedDoc = new jsPDF({ orientation: isLandscape ? 'l' : 'p', unit: 'pt', format: 'a4', compress: true });
-          else mergedDoc.addPage('a4', isLandscape ? 'l' : 'p');
-
-          const margin = 20;
-          const ratio = Math.min((pageW - margin * 2) / w, (pageH - margin * 2) / h);
-          const drawW = w * ratio, drawH = h * ratio;
-          mergedDoc.addImage(imgData, 'JPEG', (pageW - drawW) / 2, (pageH - drawH) / 2, drawW, drawH, undefined, 'FAST');
-          totalPageCounter++;
-        }
-      }
-
-      mergedPdfBlob = mergedDoc.output('blob');
-      mergedTotalPages = totalPageCounter;
-      const baseName = (document.getElementById('mergedFileName').value || 'Dokumen_Gabungan').replace(/\.pdf$/i, '');
-      document.getElementById('mergedResultTitle').textContent = `${baseName}.pdf`;
-      document.getElementById('mergedResultMeta').textContent = `Total: ${totalPageCounter} Halaman | Ukuran Akhir: ${formatBytes(mergedPdfBlob.size)}`;
-      document.getElementById('mergedResultCard').classList.remove('hidden');
-    } catch (err) {
-      alert('Gagal menggabungkan PDF: ' + err.message);
-    } finally {
-      btnMerge.disabled = false;
-      btnMerge.textContent = '📑 Gabung Halaman Terpilih Jadi 1 PDF';
-    }
-  });
-
-  function triggerBrowserDownload(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  }
-
-  window.downloadSingleFile = (id) => {
-    const item = fileQueue.find(i => i.id === id);
-    if (!item || !item.compressedBlob) return;
-    const ext = item.type === 'image' ? '.jpg' : '.pdf';
-    const cleanName = item.file.name.replace(/\.[^/.]+$/, "") + "_compressed" + ext;
-    triggerBrowserDownload(item.compressedBlob, cleanName);
-  };
-
-  document.getElementById('btnDownloadAllLocal').addEventListener('click', () => {
-    fileQueue.forEach((item, idx) => {
-      if (item.compressedBlob) setTimeout(() => window.downloadSingleFile(item.id), idx * 350);
-    });
-  });
-
-  window.downloadMergedPdf = () => {
-    if (!mergedPdfBlob) return;
-    const baseName = (document.getElementById('mergedFileName').value || 'Dokumen_Gabungan').replace(/\.pdf$/i, '');
-    triggerBrowserDownload(mergedPdfBlob, `${baseName}.pdf`);
-  };
-
-  window.openPreviewModal = async (id) => {
-    const item = fileQueue.find(i => i.id === id);
-    if (!item || !item.compressedBlob) return;
-
-    document.getElementById('beforeColumn').classList.remove('hidden');
-    document.getElementById('previewGridContainer').className = 'p-4 sm:p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 flex-1';
-    document.getElementById('afterColumnLabel').textContent = 'AFTER (Hasil Kompresi + TTD)';
-    document.getElementById('previewModalTitle').textContent = `Preview: ${item.file.name}`;
-    document.getElementById('beforeMetaBadge').textContent = formatBytes(item.file.size);
-    const pct = Math.max(0, Math.round((1 - item.compressedBlob.size / item.file.size) * 100));
-    document.getElementById('afterMetaBadge').textContent = `${formatBytes(item.compressedBlob.size)} (Hemat ${pct}%)`;
-
-    const beforeImg = document.getElementById('beforeImgPreview'), afterImg = document.getElementById('afterImgPreview');
-    const beforeCanvas = document.getElementById('beforePdfCanvas'), afterCanvas = document.getElementById('afterPdfCanvas');
-    const pdfToolbar = document.getElementById('pdfNavToolbar');
-    document.getElementById('previewModal').classList.remove('hidden');
-
-    if (item.type === 'image') {
-      pdfToolbar.classList.add('hidden');
-      beforeCanvas.classList.add('hidden'); afterCanvas.classList.add('hidden');
-      beforeImg.classList.remove('hidden'); afterImg.classList.remove('hidden');
-      beforeImg.src = URL.createObjectURL(item.file);
-      afterImg.src = URL.createObjectURL(item.compressedBlob);
-    } else {
-      beforeImg.classList.add('hidden'); afterImg.classList.add('hidden');
-      beforeCanvas.classList.remove('hidden'); afterCanvas.classList.remove('hidden');
-      pdfToolbar.classList.remove('hidden');
-
-      const origBuf = await item.file.arrayBuffer();
-      const compBuf = await item.compressedBlob.arrayBuffer();
-      pdfPreviewState.mode = 'compare';
-      pdfPreviewState.origDoc = await pdfjsLib.getDocument({ data: origBuf }).promise;
-      pdfPreviewState.compDoc = await pdfjsLib.getDocument({ data: compBuf }).promise;
-      pdfPreviewState.keptPagesMap = parsePageSelection(item.pageSelection, pdfPreviewState.origDoc.numPages);
-      pdfPreviewState.pageNum = 1;
-      pdfPreviewState.totalPages = pdfPreviewState.compDoc.numPages;
-      await renderPdfComparisonPage(1);
-    }
-  };
-
-  window.openMergedPreview = async () => {
-    if (!mergedPdfBlob) return;
-    document.getElementById('previewModalTitle').textContent = 'Preview Hasil Penggabungan PDF';
-    document.getElementById('beforeColumn').classList.add('hidden');
-    document.getElementById('previewGridContainer').className = 'p-4 sm:p-6 overflow-y-auto grid grid-cols-1 gap-6 bg-slate-50 flex-1';
-    document.getElementById('afterColumnLabel').textContent = `DOKUMEN GABUNGAN (${mergedTotalPages} HALAMAN)`;
-    document.getElementById('afterMetaBadge').textContent = formatBytes(mergedPdfBlob.size);
-    document.getElementById('afterImgPreview').classList.add('hidden');
-    document.getElementById('afterPdfCanvas').classList.remove('hidden');
-    document.getElementById('pdfNavToolbar').classList.remove('hidden');
-    document.getElementById('previewModal').classList.remove('hidden');
-
-    const compBuf = await mergedPdfBlob.arrayBuffer();
-    pdfPreviewState.mode = 'single';
-    pdfPreviewState.compDoc = await pdfjsLib.getDocument({ data: compBuf }).promise;
-    pdfPreviewState.pageNum = 1;
-    pdfPreviewState.totalPages = pdfPreviewState.compDoc.numPages;
-    await renderPdfComparisonPage(1);
-  };
-
-  async function renderPdfComparisonPage(pageNumber) {
-    const { mode, origDoc, compDoc, totalPages, keptPagesMap } = pdfPreviewState;
-    document.getElementById('pdfPageIndicator').textContent = `Halaman Hasil ${pageNumber} dari ${totalPages}`;
-    document.getElementById('btnPrevPage').disabled = pageNumber <= 1;
-    document.getElementById('btnNextPage').disabled = pageNumber >= totalPages;
-
-    if (mode === 'compare' && origDoc) {
-      const origPageNum = keptPagesMap[pageNumber - 1] || pageNumber;
-      const origPage = await origDoc.getPage(origPageNum);
-      const origVp = origPage.getViewport({ scale: 1.2 });
-      const bCanvas = document.getElementById('beforePdfCanvas');
-      bCanvas.width = origVp.width; bCanvas.height = origVp.height;
-      await origPage.render({ canvasContext: bCanvas.getContext('2d'), viewport: origVp }).promise;
-    }
-
-    const compPage = await compDoc.getPage(pageNumber);
-    const compVp = compPage.getViewport({ scale: 1.2 });
-    const aCanvas = document.getElementById('afterPdfCanvas');
-    aCanvas.width = compVp.width; aCanvas.height = compVp.height;
-    await compPage.render({ canvasContext: aCanvas.getContext('2d'), viewport: compVp }).promise;
-  }
-
-  document.getElementById('btnPrevPage').addEventListener('click', () => {
-    if (pdfPreviewState.pageNum > 1) { pdfPreviewState.pageNum--; renderPdfComparisonPage(pdfPreviewState.pageNum); }
-  });
-  document.getElementById('btnNextPage').addEventListener('click', () => {
-    if (pdfPreviewState.pageNum < pdfPreviewState.totalPages) { pdfPreviewState.pageNum++; renderPdfComparisonPage(pdfPreviewState.pageNum); }
-  });
-  window.closePreviewModal = () => { document.getElementById('previewModal').classList.add('hidden'); };
-
-  async function sendFilesToGas(filesPayload, nama, keterangan, kodeKompresi) {
-    if (!navigator.onLine) return alert('Anda sedang dalam Mode Offline. Hubungkan ke internet untuk mengunggah ke Google Drive.');
-    const alertBox = document.getElementById('statusAlert');
-    alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-blue-50 text-blue-800 border border-blue-200';
-    alertBox.textContent = `Mengunggah ${filesPayload.length} dokumen ke Google Drive & membuat Kartu Bukti...`;
-    alertBox.classList.remove('hidden');
-
-    try {
-      const response = await fetch(GAS_WEB_APP_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'upload',
-          nama,
-          keterangan,
-          kodeKompresi: kodeKompresi.toUpperCase(),
-          files: filesPayload
-        })
-      });
-      const result = await response.json();
-
-      if (result.status === 'success') {
-        lastReceiptData = {
-          nama,
-          keterangan,
-          kodeKompresi: result.kodeKompresi,
-          tanggal: new Date().toLocaleString('id-ID'),
-          files: result.uploadedFiles
-        };
-
-        const linksHtml = result.uploadedFiles.map((f, idx) =>
-          `<li><a href="${f.fileUrl}" target="_blank" class="underline font-bold text-emerald-900">${idx + 1}. ${f.fileName} (${f.compressedSize})</a></li>`
-        ).join('');
-
-        alertBox.className = 'p-5 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-900 border-2 border-emerald-400 space-y-3';
-        alertBox.innerHTML = `
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200 pb-3">
-            <div>
-              <span class="text-base font-extrabold block">✅ Dokumen Berhasil Tersimpan di Google Drive!</span>
-              <span class="text-xs text-emerald-700">Kode Kompresi: <b class="font-mono text-indigo-700">${result.kodeKompresi}</b></span>
-            </div>
-            <button type="button" onclick="downloadUploadReceiptPdf()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold rounded-xl shadow-md transition shrink-0">
-              🖨️ Cetak Kartu Bukti Upload (PDF)
-            </button>
-          </div>
-          <ul class="list-disc pl-5 text-xs space-y-1">${linksHtml}</ul>
-        `;
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error) {
-      alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200';
-      alertBox.textContent = '❌ Gagal mengunggah ke Google Drive: ' + error.message;
-    }
-  }
-
-  document.getElementById('btnSubmitCloud').addEventListener('click', async () => {
-    const nama = document.getElementById('nama').value.trim();
-    const keterangan = document.getElementById('keterangan').value.trim();
-    const kodeKompresi = document.getElementById('kodeKompresi').value.trim();
-    if (!nama || !keterangan || !kodeKompresi) return alert('Mohon lengkapi Nama Lengkap, Keperluan, dan Kode Kompresi.');
-
-    const filesPayload = [];
-    for (const item of fileQueue) {
-      const base64Data = await new Promise((res) => {
-        const r = new FileReader();
-        r.onloadend = () => res(r.result.split(',')[1]);
-        r.readAsDataURL(item.compressedBlob);
-      });
-      const ext = item.type === 'image' ? '.jpg' : '.pdf';
-      const cleanName = item.file.name.replace(/\.[^/.]+$/, "") + "_compressed" + ext;
-      filesPayload.push({
-        fileName: cleanName,
-        mimeType: item.compressedBlob.type,
-        originalSize: formatBytes(item.file.size),
-        compressedSize: formatBytes(item.compressedBlob.size),
-        fileBase64: base64Data
-      });
-    }
-    await sendFilesToGas(filesPayload, nama, keterangan, kodeKompresi);
-  });
-
-  window.uploadMergedToCloud = async () => {
-    if (!mergedPdfBlob) return;
-    const nama = prompt("Masukkan Nama Lengkap Anda:", "");
-    if (!nama) return;
-    const defaultCode = document.getElementById('kodeKompresi').value || 'DOC-8899A';
-    const kodeKompresi = prompt("Catat Kode Kompresi Anda:", defaultCode);
-    if (!kodeKompresi) return;
-
-    const base64Data = await new Promise((res) => {
-      const r = new FileReader();
-      r.onloadend = () => res(r.result.split(',')[1]);
-      r.readAsDataURL(mergedPdfBlob);
-    });
-    const baseName = (document.getElementById('mergedFileName').value || 'Dokumen_Gabungan').replace(/\.pdf$/i, '') + '.pdf';
-    const totalOrigBytes = fileQueue.reduce((acc, i) => acc + i.file.size, 0);
-
-    await sendFilesToGas([{
-      fileName: baseName,
-      mimeType: 'application/pdf',
-      originalSize: formatBytes(totalOrigBytes),
-      compressedSize: formatBytes(mergedPdfBlob.size),
-      fileBase64: base64Data
-    }], nama, "Gabungan PDF", kodeKompresi);
-  };
-
-  document.getElementById('historySearchForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!navigator.onLine) return alert('Pencarian riwayat membutuhkan koneksi internet.');
-    const nama = document.getElementById('searchNama').value.trim();
-    const kode = document.getElementById('searchKode').value.trim().toUpperCase();
-    const container = document.getElementById('historyResultContainer');
-    const btn = document.getElementById('btnSearchHistory');
-
-    btn.disabled = true; btn.textContent = '⏳ Mencari...';
-    container.innerHTML = `<div class="p-4 rounded-xl bg-slate-50 text-slate-600 text-sm text-center">Mencari dokumen...</div>`;
-
-    try {
-      const response = await fetch(GAS_WEB_APP_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'history', nama, kodeKompresi: kode })
-      });
-      const result = await response.json();
-
-      if (result.status === 'success') {
-        if (result.records.length === 0) {
-          container.innerHTML = `<div class="p-6 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-center text-sm font-bold">Dokumen tidak ditemukan. Pastikan Nama & Kode Kompresi benar.</div>`;
-        } else {
-          lastReceiptData = {
-            nama: result.records[0].nama,
-            keterangan: result.records[0].keterangan,
-            kodeKompresi: kode,
-            tanggal: result.records[0].tanggal,
-            files: result.records
-          };
-
-          const cardsHtml = result.records.map((rec) => `
-            <div class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div class="space-y-1">
-                <div class="flex items-center gap-2">
-                  <span class="px-2.5 py-0.5 text-[11px] font-mono font-extrabold rounded bg-indigo-100 text-indigo-800">${rec.kodeKompresi}</span>
-                  <span class="text-xs text-slate-400">${rec.tanggal}</span>
-                </div>
-                <h4 class="font-bold text-sm text-slate-900">${rec.fileName}</h4>
-                <p class="text-xs text-slate-600">Pengirim: <b>${rec.nama}</b> | Ukuran: ${rec.originalSize} ➔ <b class="text-emerald-700">${rec.compressedSize}</b></p>
-              </div>
-              <a href="${rec.fileUrl}" target="_blank" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow transition text-center shrink-0">
-                📂 Buka File di Drive
-              </a>
-            </div>
-          `).join('');
-
-          container.innerHTML = `
-            <div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
-              <span class="text-xs font-bold text-emerald-900">Ditemukan ${result.records.length} dokumen milik <b>${result.records[0].nama}</b>:</span>
-              <button type="button" onclick="downloadUploadReceiptPdf()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow transition">
-                🖨️ Cetak Ulang Kartu Bukti (PDF)
-              </button>
-            </div>
-            ${cardsHtml}
-          `;
-        }
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (err) {
-      container.innerHTML = `<div class="p-4 rounded-xl bg-red-50 text-red-700 text-sm">❌ Gagal mengambil riwayat: ${err.message}</div>`;
-    } finally {
-      btn.disabled = false; btn.textContent = '🔎 Cari Dokumen Saya';
-    }
-  });
-</script>
+  <!-- Main Application Script -->
+  <script src="app.js"></script>
 </body>
 </html>
