@@ -1,8 +1,8 @@
 // =========================================================================
-// APP.JS - MESIN UTAMA SMARTDOC STUDIO V8.0 (MODULAR EDITION)
+// APP.JS - SMARTDOC STUDIO V8.5 (4-POINT PERSPECTIVE & COLOR/BW EDITION)
 // =========================================================================
 
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxES-PNGaytk74AvtqVw1U8iQ--NS2V_Q44C48VUNrOczjXZm98orD-xx-sIP5R0sOl/exec";
+const GAS_WEB_APP_URL = "PASTE_URL_WEB_APP_GOOGLE_APPS_SCRIPT_ANDA";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -22,7 +22,6 @@ function lockMobileFullScreen() {
   }
 }
 
-// Aktifkan layar penuh otomatis setiap kali layar HP disentuh atau orientasi berubah
 if (isMobileDevice) {
   ['pointerdown', 'touchstart', 'touchend', 'click'].forEach(evt => {
     document.addEventListener(evt, lockMobileFullScreen, { passive: true });
@@ -33,19 +32,15 @@ if (isMobileDevice) {
   });
 }
 
-// Registrasi Service Worker untuk Mode Offline & Instalasi PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
 
-// One-Click Native App Installer
 let deferredInstallPrompt = null;
 const btnInstallApp = document.getElementById('btnInstallApp');
-const installBtnLabel = document.getElementById('installBtnLabel');
 
-// Sembunyikan tombol install jika aplikasi sudah berjalan dalam mode terinstal (Standalone/Fullscreen PWA)
 if (window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
   if (btnInstallApp) btnInstallApp.classList.add('hidden');
 }
@@ -242,12 +237,21 @@ window.addEventListener('offline', updateNetworkIndicator);
 window.addEventListener('load', () => { updateNetworkIndicator(); refreshOfflineQueueUI(); });
 
 // =========================================================================
-// 3. SCAN KAMERA LANGSUNG + AUTO-CROP TEPI KERTAS & FILTER TAJAM
+// 3. FITUR SCANNER 4-TITIK (PERSPECTIVE UNWARP) & PILIHAN WARNA / B&W
 // =========================================================================
 let cameraStream = null;
 let cameraFacing = 'environment';
 let scannerTargetDestination = 'queue';
-let cropRectRatio = { x: 0.08, y: 0.08, w: 0.84, h: 0.84 };
+let scanColorMode = 'color'; // 'color' (Berwarna Asli) | 'magic' (Warna Tajam) | 'bw' (Hitam Putih)
+
+// 4 Koordinat Sudut dalam rasio (0.0 - 1.0): [0: Kiri-Atas, 1: Kanan-Atas, 2: Kanan-Bawah, 3: Kiri-Bawah]
+let quadCorners = [
+  { x: 0.10, y: 0.10 },
+  { x: 0.90, y: 0.10 },
+  { x: 0.90, y: 0.90 },
+  { x: 0.10, y: 0.90 }
+];
+let activeCornerIndex = null;
 
 window.openCameraScanner = async (destination = 'queue') => {
   scannerTargetDestination = destination;
@@ -268,8 +272,7 @@ async function startCameraStream() {
     });
     document.getElementById('cameraVideoEl').srcObject = cameraStream;
   } catch (err) {
-    alert('Gagal mengakses kamera: Pastikan izin kamera telah diberikan di browser Anda.');
-    window.closeCameraScanner();
+    alert('Kamera tidak tersedia atau izin ditolak. Anda tetap bisa memilih foto dokumen dari Galeri.');
   }
 }
 
@@ -286,9 +289,10 @@ window.closeCameraScanner = () => {
   document.getElementById('cameraScannerModal').classList.add('hidden');
 };
 
+// Ambil foto dari stream kamera
 window.captureCameraFrame = () => {
   const video = document.getElementById('cameraVideoEl');
-  if (!video.videoWidth) return;
+  if (!video.videoWidth) return alert('Tunggu kamera siap atau pilih foto dari galeri.');
 
   const rawCanvas = document.getElementById('scannerRawCanvas');
   const ctx = rawCanvas.getContext('2d');
@@ -301,14 +305,43 @@ window.captureCameraFrame = () => {
     cameraStream = null;
   }
 
+  enterFourPointCropMode();
+};
+
+// Opsi memilih foto miring dari galeri untuk diluruskan dengan 4 titik
+document.getElementById('scannerGalleryInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const rawCanvas = document.getElementById('scannerRawCanvas');
+      rawCanvas.width = img.width;
+      rawCanvas.height = img.height;
+      rawCanvas.getContext('2d').drawImage(img, 0, 0);
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+      enterFourPointCropMode();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+
+function enterFourPointCropMode() {
   document.getElementById('cameraLiveStep').classList.add('hidden');
   document.getElementById('cameraCropStep').classList.remove('hidden');
   document.getElementById('cameraLiveControls').classList.add('hidden');
   document.getElementById('cameraCropControls').classList.remove('hidden');
-  document.getElementById('scannerStepSubtitle').textContent = 'Sesuaikan kotak Auto-Crop biru pada tepi dokumen, lalu klik Gunakan Hasil Scan.';
+  document.getElementById('scannerStepSubtitle').textContent =
+    'Geser ke-4 titik biru ke keempat sudut dokumen yang miring, lalu pilih tampilan Berwarna atau Hitam-Putih.';
 
-  window.autoDetectDocumentEdges();
-};
+  window.autoDetectFourCorners();
+}
 
 window.retakeCameraPhoto = async () => {
   document.getElementById('cameraLiveStep').classList.remove('hidden');
@@ -318,117 +351,230 @@ window.retakeCameraPhoto = async () => {
   await startCameraStream();
 };
 
-window.autoDetectDocumentEdges = () => {
+// Pilihan Mode Warna Hasil Scan (Berwarna Asli, Warna Tajam, Hitam-Putih)
+window.setScanColorMode = (mode) => {
+  scanColorMode = mode;
+  ['color', 'magic', 'bw'].forEach(m => {
+    const btn = document.getElementById('btnScanMode_' + m);
+    if (m === mode) {
+      btn.className = 'px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold bg-cyan-400 text-slate-950 transition shadow';
+    } else {
+      btn.className = 'px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white transition';
+    }
+  });
+  window.updateWarpedPreview();
+};
+
+// Algoritma Deteksi 4 Sudut Ekstrem Kertas Otomatis (4-Corner Extreme Point Finder)
+window.autoDetectFourCorners = () => {
   const canvas = document.getElementById('scannerRawCanvas');
   const ctx = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height;
   const imgData = ctx.getImageData(0, 0, w, h).data;
 
-  let minX = w, minY = h, maxX = 0, maxY = 0;
-  let foundBrightPixels = 0;
-  const step = 8;
+  const step = Math.max(4, Math.floor(Math.min(w, h) / 120));
+  const brightPoints = [];
 
   for (let y = Math.floor(h * 0.04); y < Math.floor(h * 0.96); y += step) {
     for (let x = Math.floor(w * 0.04); x < Math.floor(w * 0.96); x += step) {
       const idx = (y * w + x) * 4;
       const lum = 0.299 * imgData[idx] + 0.587 * imgData[idx + 1] + 0.114 * imgData[idx + 2];
-      if (lum > 155) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-        foundBrightPixels++;
+      if (lum > 158) {
+        brightPoints.push({ x: x / w, y: y / h });
       }
     }
   }
 
-  if (foundBrightPixels > 120 && (maxX - minX) > w * 0.25 && (maxY - minY) > h * 0.25) {
-    cropRectRatio.x = Math.max(0.02, minX / w);
-    cropRectRatio.y = Math.max(0.02, minY / h);
-    cropRectRatio.w = Math.min(0.96 - cropRectRatio.x, (maxX - minX) / w);
-    cropRectRatio.h = Math.min(0.96 - cropRectRatio.y, (maxY - minY) / h);
+  if (brightPoints.length > 80) {
+    // Cari 4 titik ekstrem menggunakan metrik proyeksi sudut:
+    // TL: min(x + y), TR: max(x - y), BR: max(x + y), BL: min(x - y)
+    let tl = brightPoints[0], tr = brightPoints[0], br = brightPoints[0], bl = brightPoints[0];
+    let minSum = 999, maxSum = -999, minDiff = 999, maxDiff = -999;
+
+    for (const pt of brightPoints) {
+      const sum = pt.x + pt.y;
+      const diff = pt.x - pt.y;
+      if (sum < minSum) { minSum = sum; tl = pt; }
+      if (sum > maxSum) { maxSum = sum; br = pt; }
+      if (diff > maxDiff) { maxDiff = diff; tr = pt; }
+      if (diff < minDiff) { minDiff = diff; bl = pt; }
+    }
+
+    // Validasi luas poligon agar tidak terlalu sempit
+    const polyWidth = Math.hypot(tr.x - tl.x, tr.y - tl.y);
+    const polyHeight = Math.hypot(bl.x - tl.x, bl.y - tl.y);
+
+    if (polyWidth > 0.22 && polyHeight > 0.22) {
+      quadCorners = [
+        { x: Math.max(0.02, tl.x), y: Math.max(0.02, tl.y) },
+        { x: Math.min(0.98, tr.x), y: Math.max(0.02, tr.y) },
+        { x: Math.min(0.98, br.x), y: Math.min(0.98, br.y) },
+        { x: Math.max(0.02, bl.x), y: Math.min(0.98, bl.y) }
+      ];
+    } else {
+      quadCorners = [
+        { x: 0.10, y: 0.10 },
+        { x: 0.90, y: 0.10 },
+        { x: 0.90, y: 0.90 },
+        { x: 0.10, y: 0.90 }
+      ];
+    }
   } else {
-    cropRectRatio = { x: 0.08, y: 0.08, w: 0.84, h: 0.84 };
+    quadCorners = [
+      { x: 0.10, y: 0.10 },
+      { x: 0.90, y: 0.10 },
+      { x: 0.90, y: 0.90 },
+      { x: 0.10, y: 0.90 }
+    ];
   }
-  updateCropBoxStyle();
+
+  renderFourCornerPins();
+  window.updateWarpedPreview();
 };
 
-function updateCropBoxStyle() {
-  const box = document.getElementById('cropSelectionBox');
-  box.style.left = `${cropRectRatio.x * 100}%`;
-  box.style.top = `${cropRectRatio.y * 100}%`;
-  box.style.width = `${cropRectRatio.w * 100}%`;
-  box.style.height = `${cropRectRatio.h * 100}%`;
+function renderFourCornerPins() {
+  const polyPoints = quadCorners.map(pt => `${(pt.x * 100).toFixed(2)},${(pt.y * 100).toFixed(2)}`).join(' ');
+  document.getElementById('cropPolygonShape').setAttribute('points', polyPoints);
+
+  quadCorners.forEach((pt, idx) => {
+    const pin = document.getElementById('cornerHandle_' + idx);
+    pin.style.left = `${pt.x * 100}%`;
+    pin.style.top = `${pt.y * 100}%`;
+  });
 }
 
-const cropBox = document.getElementById('cropSelectionBox');
-const cropResizeHandle = document.getElementById('cropResizeHandle');
+// Interaksi Drag & Drop untuk Ke-4 Pin Sudut
 const cropStage = document.getElementById('cropStageWrapper');
-let cropDragState = null;
-let cropStartOffset = { x: 0, y: 0 };
-
-cropResizeHandle.addEventListener('pointerdown', (e) => {
-  e.stopPropagation();
-  cropDragState = 'resize';
-  cropResizeHandle.setPointerCapture(e.pointerId);
-});
-
-cropBox.addEventListener('pointerdown', (e) => {
-  if (e.target === cropResizeHandle) return;
-  cropDragState = 'move';
-  const rect = cropBox.getBoundingClientRect();
-  cropStartOffset.x = e.clientX - rect.left;
-  cropStartOffset.y = e.clientY - rect.top;
-  cropBox.setPointerCapture(e.pointerId);
+[0, 1, 2, 3].forEach(idx => {
+  const pinEl = document.getElementById('cornerHandle_' + idx);
+  pinEl.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    activeCornerIndex = idx;
+    pinEl.setPointerCapture(e.pointerId);
+  });
 });
 
 window.addEventListener('pointermove', (e) => {
-  if (!cropDragState) return;
+  if (activeCornerIndex === null) return;
   const stageRect = cropStage.getBoundingClientRect();
-  if (cropDragState === 'move') {
-    let nx = (e.clientX - stageRect.left - cropStartOffset.x) / stageRect.width;
-    let ny = (e.clientY - stageRect.top - cropStartOffset.y) / stageRect.height;
-    cropRectRatio.x = Math.max(0, Math.min(nx, 1 - cropRectRatio.w));
-    cropRectRatio.y = Math.max(0, Math.min(ny, 1 - cropRectRatio.h));
-  } else if (cropDragState === 'resize') {
-    let nw = (e.clientX - stageRect.left) / stageRect.width - cropRectRatio.x;
-    let nh = (e.clientY - stageRect.top) / stageRect.height - cropRectRatio.y;
-    cropRectRatio.w = Math.max(0.15, Math.min(nw, 1 - cropRectRatio.x));
-    cropRectRatio.h = Math.max(0.15, Math.min(nh, 1 - cropRectRatio.y));
-  }
-  updateCropBoxStyle();
+  const nx = Math.max(0.01, Math.min(0.99, (e.clientX - stageRect.left) / stageRect.width));
+  const ny = Math.max(0.01, Math.min(0.99, (e.clientY - stageRect.top) / stageRect.height));
+
+  quadCorners[activeCornerIndex] = { x: nx, y: ny };
+  renderFourCornerPins();
 });
 
-window.addEventListener('pointerup', () => { cropDragState = null; });
+window.addEventListener('pointerup', () => {
+  if (activeCornerIndex !== null) {
+    activeCornerIndex = null;
+    window.updateWarpedPreview();
+  }
+});
 
-window.applyCropAndSaveScan = async () => {
-  const rawCanvas = document.getElementById('scannerRawCanvas');
-  const sx = Math.round(rawCanvas.width * cropRectRatio.x);
-  const sy = Math.round(rawCanvas.height * cropRectRatio.y);
-  const sw = Math.round(rawCanvas.width * cropRectRatio.w);
-  const sh = Math.round(rawCanvas.height * cropRectRatio.h);
+// =========================================================================
+// MESIN TRANSFORMASI 4-TITIK PERSPEKTIF (BILINEAR QUAD UNWARP) & FILTER WARNA
+// =========================================================================
+function performPerspectiveWarp(srcCanvas, cornersRatio, colorMode, maxOutputDim = 1400) {
+  const sw = srcCanvas.width;
+  const sh = srcCanvas.height;
+  const srcCtx = srcCanvas.getContext('2d');
+  const srcData = srcCtx.getImageData(0, 0, sw, sh).data;
 
-  const outCanvas = document.createElement('canvas');
-  outCanvas.width = sw;
-  outCanvas.height = sh;
-  const outCtx = outCanvas.getContext('2d');
-  outCtx.drawImage(rawCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  // Konversi rasio sudut ke koordinat piksel asli
+  const p0 = { x: cornersRatio[0].x * sw, y: cornersRatio[0].y * sh }; // Kiri Atas (TL)
+  const p1 = { x: cornersRatio[1].x * sw, y: cornersRatio[1].y * sh }; // Kanan Atas (TR)
+  const p2 = { x: cornersRatio[2].x * sw, y: cornersRatio[2].y * sh }; // Kanan Bawah (BR)
+  const p3 = { x: cornersRatio[3].x * sw, y: cornersRatio[3].y * sh }; // Kiri Bawah (BL)
 
-  if (document.getElementById('docEnhanceFilter').checked) {
-    const imgData = outCtx.getImageData(0, 0, sw, sh);
-    const d = imgData.data;
-    const contrast = 1.35;
-    for (let i = 0; i < d.length; i += 4) {
-      const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      let val = ((gray - 128) * contrast) + 136;
-      val = Math.max(0, Math.min(255, val));
-      d[i] = d[i + 1] = d[i + 2] = val;
-    }
-    outCtx.putImageData(imgData, 0, 0);
+  // Hitung lebar dan tinggi alami dari rata-rata sisi berhadapan
+  const topW = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+  const botW = Math.hypot(p2.x - p3.x, p2.y - p3.y);
+  const leftH = Math.hypot(p3.x - p0.x, p3.y - p0.y);
+  const rightH = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+
+  let dstW = Math.round(Math.max(topW, botW));
+  let dstH = Math.round(Math.max(leftH, rightH));
+
+  if (Math.max(dstW, dstH) > maxOutputDim) {
+    const scale = maxOutputDim / Math.max(dstW, dstH);
+    dstW = Math.max(100, Math.round(dstW * scale));
+    dstH = Math.max(100, Math.round(dstH * scale));
   }
 
-  const scannedBlob = await new Promise(r => outCanvas.toBlob(r, 'image/jpeg', 0.90));
-  const scannedFile = new File([scannedBlob], `Scan_Kamera_${Date.now()}.jpg`, { type: 'image/jpeg' });
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = dstW;
+  outCanvas.height = dstH;
+  const outCtx = outCanvas.getContext('2d');
+  const outImgData = outCtx.createImageData(dstW, dstH);
+  const dstData = outImgData.data;
+
+  // Pemetaan Bilinear 4-Titik (Meluruskan bidang miring ke persegi panjang tegak)
+  for (let y = 0; y < dstH; y++) {
+    const v = y / (dstH - 1 || 1);
+    const invV = 1 - v;
+
+    for (let x = 0; x < dstW; x++) {
+      const u = x / (dstW - 1 || 1);
+      const invU = 1 - u;
+
+      // Koordinat sumber di dalam poligon 4 titik
+      const srcX = invU * invV * p0.x + u * invV * p1.x + u * v * p2.x + invU * v * p3.x;
+      const srcY = invU * invV * p0.y + u * invV * p1.y + u * v * p2.y + invU * v * p3.y;
+
+      const ix = Math.min(sw - 1, Math.max(0, Math.round(srcX)));
+      const iy = Math.min(sh - 1, Math.max(0, Math.round(srcY)));
+      const srcIdx = (iy * sw + ix) * 4;
+      const dstIdx = (y * dstW + x) * 4;
+
+      let r = srcData[srcIdx];
+      let g = srcData[srcIdx + 1];
+      let b = srcData[srcIdx + 2];
+
+      if (colorMode === 'bw') {
+        // Mode Hitam-Putih Dokumen Kontras Tinggi
+        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+        let bwVal = ((gray - 128) * 1.45) + 140;
+        bwVal = bwVal > 195 ? 255 : (bwVal < 65 ? 0 : bwVal);
+        r = g = b = Math.max(0, Math.min(255, bwVal));
+      } else if (colorMode === 'magic') {
+        // Mode Warna Tajam (Mencerahkan kertas tanpa menghilangkan warna stempel/tinta)
+        r = Math.min(255, Math.max(0, ((r - 128) * 1.25) + 142));
+        g = Math.min(255, Math.max(0, ((g - 128) * 1.25) + 142));
+        b = Math.min(255, Math.max(0, ((b - 128) * 1.25) + 142));
+      }
+      // Jika colorMode === 'color', r, g, b tetap murni seperti warna asli
+
+      dstData[dstIdx] = r;
+      dstData[dstIdx + 1] = g;
+      dstData[dstIdx + 2] = b;
+      dstData[dstIdx + 3] = 255;
+    }
+  }
+
+  outCtx.putImageData(outImgData, 0, 0);
+  return outCanvas;
+}
+
+window.updateWarpedPreview = () => {
+  const rawCanvas = document.getElementById('scannerRawCanvas');
+  if (!rawCanvas.width) return;
+
+  // Render preview cepat dengan resolusi menengah (550px) agar responsif
+  const previewCanvas = performPerspectiveWarp(rawCanvas, quadCorners, scanColorMode, 550);
+  const targetPreview = document.getElementById('scannerWarpedPreviewCanvas');
+  targetPreview.width = previewCanvas.width;
+  targetPreview.height = previewCanvas.height;
+  targetPreview.getContext('2d').drawImage(previewCanvas, 0, 0);
+};
+
+// Simpan hasil scan 4-titik dalam resolusi tinggi (1650px)
+window.applyCropAndSaveScan = async () => {
+  const rawCanvas = document.getElementById('scannerRawCanvas');
+  const finalWarpedCanvas = performPerspectiveWarp(rawCanvas, quadCorners, scanColorMode, 1650);
+
+  const scannedBlob = await new Promise(r => finalWarpedCanvas.toBlob(r, 'image/jpeg', 0.92));
+  const modeSuffix = scanColorMode === 'bw' ? 'BW' : (scanColorMode === 'magic' ? 'Tajam' : 'Warna');
+  const scannedFile = new File([scannedBlob], `Scan_${modeSuffix}_${Date.now()}.jpg`, { type: 'image/jpeg' });
 
   window.closeCameraScanner();
 
@@ -704,7 +850,7 @@ window.exportOcrToDocx = async () => {
 
 document.getElementById('btnStartOcr').addEventListener('click', async () => {
   const file = document.getElementById('ocrFileInput').files[0];
-  if (!file) return alert('Pilih file atau gunakan tombol Foto & Crop untuk OCR terlebih dahulu.');
+  if (!file) return alert('Pilih file atau gunakan tombol Foto 4-Titik untuk OCR terlebih dahulu.');
 
   const lang = document.getElementById('ocrLang').value;
   const rangeStr = document.getElementById('ocrPageRange').value;
@@ -835,7 +981,7 @@ window.downloadUploadReceiptPdf = (customData = null) => {
   doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
   doc.text('KARTU BUKTI PENGUMPULAN DOKUMEN DIGITAL', 15, 18);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-  doc.text('SmartDoc Studio v8.0 - Tanda Terima Resmi Penyimpanan Cloud & Riwayat', 15, 27);
+  doc.text('SmartDoc Studio v8.5 - Tanda Terima Resmi Penyimpanan Cloud & Riwayat', 15, 27);
 
   doc.setFillColor(238, 242, 255); doc.setDrawColor(165, 180, 252);
   doc.roundedRect(15, 46, 180, 24, 3, 3, 'FD');
