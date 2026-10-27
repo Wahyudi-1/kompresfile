@@ -1,5 +1,5 @@
 // =========================================================================
-// APP.JS - SMARTDOC STUDIO V9.0 (MAGNIFIER, ROTATE 90 & MULTI-PAGE SCAN PDF)
+// APP.JS - SMARTDOC STUDIO V9.5 (PAPER RATIO A4, FOLIO/F4 & FREE 4-POINT)
 // =========================================================================
 
 const GAS_WEB_APP_URL = "PASTE_URL_WEB_APP_GOOGLE_APPS_SCRIPT_ANDA";
@@ -237,14 +237,15 @@ window.addEventListener('offline', updateNetworkIndicator);
 window.addEventListener('load', () => { updateNetworkIndicator(); refreshOfflineQueueUI(); });
 
 // =========================================================================
-// 3. FITUR SCANNER 4-TITIK + MAGNIFIER + ROTASI 90° + MULTI-PAGE KE 1 PDF
+// 3. FITUR SCANNER 4-TITIK + RASIO A4/FOLIO/BEBAS + MAGNIFIER + MULTI-PAGE
 // =========================================================================
 let cameraStream = null;
 let cameraFacing = 'environment';
 let scannerTargetDestination = 'queue';
-let scanColorMode = 'color'; // 'color' | 'magic' | 'bw'
-let currentScanRotation = 0; // 0 | 90 | 180 | 270
-let scannedPagesBatch = [];  // Menyimpan daftar halaman yang sudah dipindai dalam sesi ini
+let scanColorMode = 'color';   // 'color' | 'magic' | 'bw'
+let scanPaperRatio = 'free';   // 'free' (Bebas 4 Titik) | 'a4' (210x297mm) | 'folio' (215x330mm)
+let currentScanRotation = 0;   // 0 | 90 | 180 | 270
+let scannedPagesBatch = [];
 
 let quadCorners = [
   { x: 0.10, y: 0.10 },
@@ -343,7 +344,7 @@ function enterFourPointCropMode() {
   document.getElementById('cameraLiveControls').classList.add('hidden');
   document.getElementById('cameraCropControls').classList.remove('hidden');
   document.getElementById('scannerStepSubtitle').textContent =
-    'Geser 4 titik sudut (dengan Kaca Pembesar), putar 90° jika miring, lalu tambah halaman atau jadikan 1 PDF.';
+    'Geser 4 titik sudut, pilih rasio kertas (Bebas / A4 / Folio), lalu simpan halaman atau jadikan 1 PDF.';
   updateRotationBadgeText();
   window.autoDetectFourCorners();
 }
@@ -356,6 +357,20 @@ window.retakeCameraPhoto = async () => {
   await startCameraStream();
 };
 
+// PENGATURAN RASIO KERTAS HASIL SCAN: 'free' | 'a4' | 'folio'
+window.setScanPaperRatio = (ratioType) => {
+  scanPaperRatio = ratioType;
+  ['free', 'a4', 'folio'].forEach(r => {
+    const btn = document.getElementById('btnRatio_' + r);
+    if (r === ratioType) {
+      btn.className = 'px-2.5 py-1 rounded text-[11px] font-extrabold bg-cyan-400 text-slate-950 transition shadow';
+    } else {
+      btn.className = 'px-2.5 py-1 rounded text-[11px] font-bold text-slate-300 hover:text-white transition';
+    }
+  });
+  window.updateWarpedPreview();
+};
+
 // FITUR PUTAR 90 DERAJAT (ROTATE KIRI / KANAN)
 window.rotateCurrentScan = (deltaDeg) => {
   currentScanRotation = (currentScanRotation + deltaDeg + 360) % 360;
@@ -365,10 +380,10 @@ window.rotateCurrentScan = (deltaDeg) => {
 
 function updateRotationBadgeText() {
   const labels = {
-    0: '0° (Tegak Normal)',
-    90: '90° (Putar Kanan)',
+    0: '0° (Tegak)',
+    90: '90° (Kanan)',
     180: '180° (Terbalik)',
-    270: '270° (Putar Kiri)'
+    270: '270° (Kiri)'
   };
   document.getElementById('scanRotationBadge').textContent = labels[currentScanRotation] || `${currentScanRotation}°`;
 }
@@ -464,20 +479,18 @@ function updateMagnifierLoupe(cornerIdx, ratioX, ratioY) {
   const cornerNames = ['1: Kiri-Atas', '2: Kanan-Atas', '3: Kanan-Bawah', '4: Kiri-Bawah'];
   document.getElementById('magnifierCornerLabel').textContent = cornerNames[cornerIdx];
 
-  // Tempatkan kaca pembesar di atas jari (atau di bawah jika jari terlalu dekat ke tepi atas)
   const pinPxX = ratioX * stageRect.width;
   const pinPxY = ratioY * stageRect.height;
   const loupeSize = 116;
 
   let leftPos = pinPxX - loupeSize / 2;
   let topPos = pinPxY - loupeSize - 26;
-  if (topPos < 4) topPos = pinPxY + 26; // Pindah ke bawah jika mentok atas
+  if (topPos < 4) topPos = pinPxY + 26;
   leftPos = Math.max(4, Math.min(leftPos, stageRect.width - loupeSize - 4));
 
   loupe.style.left = `${leftPos}px`;
   loupe.style.top = `${topPos}px`;
 
-  // Gambar area sekitar titik sudut dengan perbesaran 2.6x
   const magCtx = magCanvas.getContext('2d');
   const zoomFactor = 2.6;
   const srcRadiusX = (magCanvas.width / zoomFactor) / 2;
@@ -532,9 +545,9 @@ window.addEventListener('pointerup', () => {
 });
 
 // =========================================================================
-// MESIN TRANSFORMASI 4-TITIK PERSPEKTIF + ROTASI 90 DERAJAT + FILTER WARNA
+// MESIN TRANSFORMASI 4-TITIK + PENYESUAIAN RASIO KERTAS (A4, FOLIO, BEBAS)
 // =========================================================================
-function performPerspectiveWarp(srcCanvas, cornersRatio, colorMode, rotationDeg = 0, maxOutputDim = 1400) {
+function performPerspectiveWarp(srcCanvas, cornersRatio, colorMode, rotationDeg = 0, paperRatioMode = 'free', maxOutputDim = 1400) {
   const sw = srcCanvas.width;
   const sh = srcCanvas.height;
   const srcCtx = srcCanvas.getContext('2d');
@@ -545,14 +558,34 @@ function performPerspectiveWarp(srcCanvas, cornersRatio, colorMode, rotationDeg 
   const p2 = { x: cornersRatio[2].x * sw, y: cornersRatio[2].y * sh };
   const p3 = { x: cornersRatio[3].x * sw, y: cornersRatio[3].y * sh };
 
+  // Hitung lebar & tinggi alami berdasarkan 4 titik sudut
   const topW = Math.hypot(p1.x - p0.x, p1.y - p0.y);
   const botW = Math.hypot(p2.x - p3.x, p2.y - p3.y);
   const leftH = Math.hypot(p3.x - p0.x, p3.y - p0.y);
   const rightH = Math.hypot(p2.x - p1.x, p2.y - p1.y);
 
-  let dstW = Math.round(Math.max(topW, botW));
-  let dstH = Math.round(Math.max(leftH, rightH));
+  let naturalW = Math.max(10, Math.round(Math.max(topW, botW)));
+  let naturalH = Math.max(10, Math.round(Math.max(leftH, rightH)));
 
+  let dstW = naturalW;
+  let dstH = naturalH;
+
+  // Sesuaikan ke rasio kertas A4 atau Folio (F4) jika dipilih pengguna
+  if (paperRatioMode === 'a4' || paperRatioMode === 'folio') {
+    // Rasio panjang:lebar standar -> A4 = 297/210 (1.4142), Folio/F4 = 330/215 (1.5349)
+    const targetAspect = paperRatioMode === 'a4' ? (297 / 210) : (330 / 215);
+    const isNaturalLandscape = naturalW > naturalH;
+
+    if (isNaturalLandscape) {
+      dstW = naturalW;
+      dstH = Math.round(naturalW / targetAspect);
+    } else {
+      dstH = naturalH;
+      dstW = Math.round(naturalH / targetAspect);
+    }
+  }
+
+  // Batasi dimensi maksimum agar tetap ringan dan cepat
   if (Math.max(dstW, dstH) > maxOutputDim) {
     const scale = maxOutputDim / Math.max(dstW, dstH);
     dstW = Math.max(100, Math.round(dstW * scale));
@@ -630,11 +663,29 @@ window.updateWarpedPreview = () => {
   const rawCanvas = document.getElementById('scannerRawCanvas');
   if (!rawCanvas.width) return;
 
-  const previewCanvas = performPerspectiveWarp(rawCanvas, quadCorners, scanColorMode, currentScanRotation, 520);
+  const previewCanvas = performPerspectiveWarp(
+    rawCanvas,
+    quadCorners,
+    scanColorMode,
+    currentScanRotation,
+    scanPaperRatio,
+    520
+  );
+
   const targetPreview = document.getElementById('scannerWarpedPreviewCanvas');
   targetPreview.width = previewCanvas.width;
   targetPreview.height = previewCanvas.height;
   targetPreview.getContext('2d').drawImage(previewCanvas, 0, 0);
+
+  const ratioLabels = {
+    free: 'Bebas (Sesuai Pengaturan 4 Titik Sudut)',
+    a4: 'Standar Kertas A4 (210 × 297 mm)',
+    folio: 'Standar Kertas Folio / F4 (215 × 330 mm)'
+  };
+  const infoEl = document.getElementById('scanDimensionInfo');
+  if (infoEl) {
+    infoEl.textContent = `Rasio Aktif: ${ratioLabels[scanPaperRatio]} — Pratinjau: ${previewCanvas.width}×${previewCanvas.height} px`;
+  }
 };
 
 // =========================================================================
@@ -642,15 +693,22 @@ window.updateWarpedPreview = () => {
 // =========================================================================
 function captureCurrentWarpedPageData() {
   const rawCanvas = document.getElementById('scannerRawCanvas');
-  const finalCanvas = performPerspectiveWarp(rawCanvas, quadCorners, scanColorMode, currentScanRotation, 1600);
+  const finalCanvas = performPerspectiveWarp(
+    rawCanvas,
+    quadCorners,
+    scanColorMode,
+    currentScanRotation,
+    scanPaperRatio,
+    1650
+  );
   return {
     dataUrl: finalCanvas.toDataURL('image/jpeg', 0.88),
     width: finalCanvas.width,
-    height: finalCanvas.height
+    height: finalCanvas.height,
+    paperRatio: scanPaperRatio
   };
 }
 
-// Tombol "➕ Simpan & Scan Halaman Berikutnya"
 window.addCurrentScanAndContinue = async () => {
   const pageData = captureCurrentWarpedPageData();
   scannedPagesBatch.push(pageData);
@@ -687,13 +745,13 @@ function updateBatchTrayUI() {
   list.innerHTML = scannedPagesBatch.map((p, i) => `
     <div class="relative group shrink-0 w-14 h-18 rounded-lg overflow-hidden border border-cyan-400 bg-slate-950">
       <img src="${p.dataUrl}" class="w-full h-16 object-cover" alt="Hal ${i + 1}">
-      <span class="absolute bottom-0 inset-x-0 bg-slate-950/80 text-[9px] font-bold text-center text-cyan-300">Hal ${i + 1}</span>
+      <span class="absolute bottom-0 inset-x-0 bg-slate-950/85 text-[9px] font-bold text-center text-cyan-300 uppercase">Hal ${i + 1} (${p.paperRatio})</span>
       <button type="button" onclick="removeBatchPage(${i})" class="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full w-4 h-4 text-[9px] font-bold flex items-center justify-center">✕</button>
     </div>
   `).join('');
 }
 
-// Rakit seluruh halaman yang dipindai menjadi 1 file PDF utuh
+// Rakit seluruh halaman menjadi 1 file PDF sesuai dimensi kertas masing-masing (A4 / Folio / Bebas)
 window.finishBatchScanAsSinglePdf = async (includeCurrentCropStep = false) => {
   if (includeCurrentCropStep) {
     const currentData = captureCurrentWarpedPageData();
@@ -708,23 +766,39 @@ window.finishBatchScanAsSinglePdf = async (includeCurrentCropStep = false) => {
   let pdfDoc = null;
 
   scannedPagesBatch.forEach((p, idx) => {
-    const wPt = p.width * 0.75;
-    const hPt = p.height * 0.75;
-    const orient = wPt > hPt ? 'l' : 'p';
+    const isLandscape = p.width > p.height;
+    const orient = isLandscape ? 'l' : 'p';
+
+    // Tentukan ukuran halaman PDF dalam satuan point (pt)
+    let pageWPt, pageHPt;
+    if (p.paperRatio === 'a4') {
+      // Standar A4 dalam pt: 595.28 x 841.89 pt
+      pageWPt = isLandscape ? 841.89 : 595.28;
+      pageHPt = isLandscape ? 595.28 : 841.89;
+    } else if (p.paperRatio === 'folio') {
+      // Standar Folio / F4 (215 x 330 mm) dalam pt: 609.45 x 935.43 pt
+      pageWPt = isLandscape ? 935.43 : 609.45;
+      pageHPt = isLandscape ? 609.45 : 935.43;
+    } else {
+      // Mode Bebas mengikuti ukuran piksel hasil pelurusan 4 titik
+      pageWPt = p.width * 0.75;
+      pageHPt = p.height * 0.75;
+    }
 
     if (idx === 0) {
-      pdfDoc = new jsPDF({ orientation: orient, unit: 'pt', format: [wPt, hPt], compress: true });
+      pdfDoc = new jsPDF({ orientation: orient, unit: 'pt', format: [pageWPt, pageHPt], compress: true });
     } else {
-      pdfDoc.addPage([wPt, hPt], orient);
+      pdfDoc.addPage([pageWPt, pageHPt], orient);
     }
-    pdfDoc.addImage(p.dataUrl, 'JPEG', 0, 0, wPt, hPt, undefined, 'FAST');
+    pdfDoc.addImage(p.dataUrl, 'JPEG', 0, 0, pageWPt, pageHPt, undefined, 'FAST');
   });
 
   const pdfBlob = pdfDoc.output('blob');
   const totalPagesCount = scannedPagesBatch.length;
+  const ratioTag = scanPaperRatio.toUpperCase();
   const scannedPdfFile = new File(
     [pdfBlob],
-    `Scan_Dokumen_${totalPagesCount}Hal_${Date.now()}.pdf`,
+    `Scan_${ratioTag}_${totalPagesCount}Hal_${Date.now()}.pdf`,
     { type: 'application/pdf' }
   );
 
@@ -1135,7 +1209,7 @@ window.downloadUploadReceiptPdf = (customData = null) => {
   doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
   doc.text('KARTU BUKTI PENGUMPULAN DOKUMEN DIGITAL', 15, 18);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-  doc.text('SmartDoc Studio v9.0 - Tanda Terima Resmi Penyimpanan Cloud & Riwayat', 15, 27);
+  doc.text('SmartDoc Studio v9.5 - Tanda Terima Resmi Penyimpanan Cloud & Riwayat', 15, 27);
 
   doc.setFillColor(238, 242, 255); doc.setDrawColor(165, 180, 252);
   doc.roundedRect(15, 46, 180, 24, 3, 3, 'FD');
