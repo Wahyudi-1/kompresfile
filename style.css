@@ -1,10 +1,43 @@
 /* =========================================================================
-   STYLE.CSS - TEMA LAB FUTURISTIK (NEON DARK MODE) & OPTIMASI FULLSCREEN HP
+   STYLE.CSS - TEMA LAB FUTURISTIK, 4-POINT SCANNER PINS & FULLSCREEN HP
    ========================================================================= */
 
 html, body {
   overscroll-behavior-y: contain;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Pin 4 Titik Sudut Pemindai Perspektif */
+.corner-pin {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  margin-top: -15px;
+  background-color: rgba(6, 182, 212, 0.92);
+  border: 3px solid #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 0 14px rgba(0, 243, 255, 0.85), 0 2px 6px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  z-index: 30;
+  touch-action: none;
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+.corner-pin:active {
+  cursor: grabbing;
+  transform: scale(1.3);
+  background-color: #10b981;
+}
+
+.corner-pin span {
+  font-size: 11px;
+  font-weight: 900;
+  color: #020617;
+  pointer-events: none;
 }
 
 /* Tema Lab Futuristik (High-Contrast Neon Dark Mode) */
@@ -64,7 +97,6 @@ body.futuristic-lab .neon-border {
   border: 1px solid rgba(6, 182, 212, 0.42) !important;
 }
 
-/* Kanvas Tanda Tangan selalu berlatar terang agar tinta jelas */
 #signaturePad {
   background-color: #ffffff !important;
 }
