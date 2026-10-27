@@ -64,14 +64,14 @@
       <div class="bg-indigo-600 p-5 sm:p-6 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight">SmartDoc Studio v9.0</h1>
-            <span class="px-2.5 py-0.5 text-[10px] font-extrabold uppercase bg-cyan-400 text-slate-950 rounded-full shadow">Pro Scanner Suite</span>
+            <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight">SmartDoc Studio</h1>
+            <span class="px-2.5 py-0.5 text-[10px] font-extrabold uppercase bg-cyan-400 text-slate-950 rounded-full shadow">Wahyudi</span>
           </div>
-          <p class="text-indigo-100 text-xs sm:text-sm mt-1">Scanner 4-Titik + Kaca Pembesar, Rotasi 90°, Multi-Page Scan ke 1 PDF, Drag TTD & OCR Word (.docx).</p>
+          <p class="text-indigo-100 text-xs sm:text-sm mt-1">Kompres PDF dan Gambar, Scanner, Multi-Page PDF, Drag TTD & OCR Word.</p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <button type="button" onclick="openCameraScanner('queue')" class="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition flex items-center gap-1.5">
-            <span>📷</span> Scan Multi-Halaman
+            <span>📷</span> Scan Kamera (A4/Folio)
           </button>
           <div class="bg-slate-950/40 px-3.5 py-2 rounded-xl border border-white/20 text-right">
             <span class="text-[10px] text-indigo-100 block">Berkas Siap</span>
@@ -107,7 +107,7 @@
         <div id="modeBanner" class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-start gap-3">
           <span class="text-lg">🔒</span>
           <div id="modeBannerText">
-            <b>Mode Mandiri Aktif (100% Offline):</b> Gunakan <b>Scan Multi-Halaman</b> untuk memotret banyak lembar kertas secara beruntun dengan pelurus 4-Titik (dilengkapi Kaca Pembesar & Rotasi 90°) langsung menjadi 1 file PDF!
+            <b>Mode Mandiri Aktif (100% Offline):</b> Gunakan <b>Scan Kamera (A4/Folio)</b> untuk memotret dokumen dengan pelurus 4-Titik dan sesuaikan ukurannya ke rasio kertas <b>A4</b>, <b>Folio/F4</b>, atau <b>Bebas</b>.
           </div>
         </div>
 
@@ -240,7 +240,7 @@
             <div class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-emerald-100 text-emerald-700 mb-2 text-xl">
               📐
             </div>
-            <p class="text-emerald-700 font-bold text-sm sm:text-base">Scan Kamera 4-Titik (Multi-Page PDF)</p>
+            <p class="text-emerald-700 font-bold text-sm sm:text-base">Scan Kamera 4-Titik (A4 / Folio / Bebas)</p>
             <p class="text-xs text-slate-500 mt-1">Kaca Pembesar Sudut, Rotasi 90° & Gabung Jadi 1 PDF</p>
           </div>
         </div>
@@ -428,7 +428,7 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- MODAL SCANNER KAMERA 4-TITIK + MAGNIFIER + ROTASI + MULTI-PAGE    -->
+  <!-- MODAL SCANNER KAMERA 4-TITIK + RASIO A4/FOLIO/BEBAS + MULTI-PAGE  -->
   <!-- ================================================================= -->
   <div id="cameraScannerModal" class="fixed inset-0 z-50 hidden bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-1.5 sm:p-4">
     <div class="bg-slate-900 text-white w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] border border-cyan-500/40">
@@ -437,7 +437,7 @@
       <div class="px-4 sm:px-5 py-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-2">
         <div class="flex items-center gap-3">
           <div>
-            <h3 class="font-bold text-sm sm:text-base text-cyan-400">📐 Smart 4-Point Multi-Page Scanner</h3>
+            <h3 class="font-bold text-sm sm:text-base text-cyan-400">📐 Smart 4-Point Scanner (A4 / Folio / Bebas)</h3>
             <p class="text-[11px] text-slate-400" id="scannerStepSubtitle">Potret beberapa halaman beruntun dan jadikan 1 file PDF lurus.</p>
           </div>
           <span id="batchScanCountBadge" class="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
@@ -453,18 +453,18 @@
       <div id="cameraLiveStep" class="relative bg-black flex-1 flex items-center justify-center min-h-[300px] max-h-[58vh] overflow-hidden">
         <video id="cameraVideoEl" autoplay playsinline muted class="max-w-full max-h-[56vh] object-contain"></video>
         <div class="absolute inset-5 sm:inset-8 border-2 border-dashed border-cyan-400/70 rounded-xl pointer-events-none flex items-end justify-center pb-3">
-          <span class="bg-slate-950/85 text-cyan-300 text-[11px] font-bold px-3 py-1 rounded-full">Posisikan Halaman Dokumen (Bisa Miring / Beruntun Banyak Halaman)</span>
+          <span class="bg-slate-950/85 text-cyan-300 text-[11px] font-bold px-3 py-1 rounded-full">Posisikan Halaman Dokumen (Bisa Diatur ke Rasio A4, Folio/F4, atau Bebas)</span>
         </div>
       </div>
 
-      <!-- STEP 2: 4-POINT PERSPECTIVE + KACA PEMBESAR + ROTASI 90 DERAJAT -->
+      <!-- STEP 2: 4-POINT PERSPECTIVE + KACA PEMBESAR + ROTASI + RASIO KERTAS -->
       <div id="cameraCropStep" class="hidden p-3 sm:p-4 overflow-y-auto bg-slate-950 flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 items-center">
         
         <!-- Kolom Kiri: Kanvas Asli + 4 Titik Sudut + Kaca Pembesar (Magnifier Loupe) -->
         <div class="flex flex-col items-center justify-center">
           <span class="text-[11px] font-bold text-cyan-300 mb-1.5 uppercase tracking-wider">1. Geser 4 Titik Sudut (Kaca Pembesar Aktif Saat Disentuh):</span>
           <div id="cropStageWrapper" class="relative inline-block border border-slate-700 shadow-2xl select-none touch-none">
-            <canvas id="scannerRawCanvas" class="block max-w-full max-h-[44vh]"></canvas>
+            <canvas id="scannerRawCanvas" class="block max-w-full max-h-[42vh]"></canvas>
             
             <!-- Garis Penghubung 4 Sisi Poligon (SVG Overlay) -->
             <svg id="cropPolygonSvg" class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -487,25 +487,45 @@
           </div>
         </div>
 
-        <!-- Kolom Kanan: Pratinjau Hasil Lurus + Tombol Putar 90 Derajat (Rotate) -->
-        <div class="flex flex-col items-center justify-center space-y-2">
-          <div class="flex flex-wrap items-center justify-between w-full max-w-md gap-2">
-            <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">2. Hasil Lurus & Orientasi:</span>
-            <div class="flex items-center gap-1.5">
-              <!-- TOMBOL PUTAR 90 DERAJAT KIRI & KANAN -->
-              <button type="button" onclick="rotateCurrentScan(-90)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-[11px] font-bold text-cyan-300 transition flex items-center gap-1" title="Putar 90 Derajat ke Kiri">
-                ↺ Putar Kiri 90°
-              </button>
-              <button type="button" onclick="rotateCurrentScan(90)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-[11px] font-bold text-cyan-300 transition flex items-center gap-1" title="Putar 90 Derajat ke Kanan">
-                ↻ Putar Kanan 90°
-              </button>
+        <!-- Kolom Kanan: Pratinjau Hasil Lurus + Pilihan Rasio Kertas (A4/Folio/Bebas) + Rotasi -->
+        <div class="flex flex-col items-center justify-center space-y-2.5">
+          
+          <!-- Baris Kontrol Atas: Putar 90° & Pilihan Rasio Kertas -->
+          <div class="w-full max-w-md space-y-2 bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">2. Ukuran Rasio Kertas:</span>
+              <!-- PILIHAN RASIO KERTAS: BEBAS / A4 / FOLIO (F4) -->
+              <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-700 gap-1">
+                <button type="button" onclick="setScanPaperRatio('free')" id="btnRatio_free" class="px-2.5 py-1 rounded text-[11px] font-extrabold bg-cyan-400 text-slate-950 transition shadow">
+                  📐 Bebas (4 Titik)
+                </button>
+                <button type="button" onclick="setScanPaperRatio('a4')" id="btnRatio_a4" class="px-2.5 py-1 rounded text-[11px] font-bold text-slate-300 hover:text-white transition">
+                  📄 A4 (21×29.7)
+                </button>
+                <button type="button" onclick="setScanPaperRatio('folio')" id="btnRatio_folio" class="px-2.5 py-1 rounded text-[11px] font-bold text-slate-300 hover:text-white transition">
+                  📋 Folio / F4 (21.5×33)
+                </button>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800">
+              <span class="text-[11px] text-slate-400">Orientasi: <b id="scanRotationBadge" class="text-cyan-300">0° (Tegak)</b></span>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="rotateCurrentScan(-90)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-[11px] font-bold text-cyan-300 transition">
+                  ↺ Putar Kiri 90°
+                </button>
+                <button type="button" onclick="rotateCurrentScan(90)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-[11px] font-bold text-cyan-300 transition">
+                  ↻ Putar Kanan 90°
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="border-2 border-emerald-500/60 rounded-xl overflow-hidden bg-slate-900 shadow-xl p-1.5 flex items-center justify-center min-h-[200px]">
-            <canvas id="scannerWarpedPreviewCanvas" class="block max-w-full max-h-[42vh] object-contain rounded"></canvas>
+          <!-- Kanvas Pratinjau Hasil Akhir -->
+          <div class="border-2 border-emerald-500/60 rounded-xl overflow-hidden bg-slate-900 shadow-xl p-1.5 flex items-center justify-center min-h-[190px]">
+            <canvas id="scannerWarpedPreviewCanvas" class="block max-w-full max-h-[36vh] object-contain rounded"></canvas>
           </div>
-          <p class="text-[11px] text-slate-400 text-center">Rotasi Saat Ini: <b id="scanRotationBadge" class="text-cyan-300">0° (Tegak)</b></p>
+          <p id="scanDimensionInfo" class="text-[11px] text-slate-400 text-center">Rasio: Bebas mengikuti 4 titik sudut</p>
         </div>
 
       </div>
@@ -536,13 +556,12 @@
             📸 Ambil Foto Halaman Ini
           </button>
 
-          <!-- Tombol Selesai Langsung dari Layar Kamera jika sudah ada halaman di baki -->
           <button type="button" id="btnFinishBatchFromLive" onclick="finishBatchScanAsSinglePdf()" class="hidden px-4 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg transition">
             📑 Selesai & Jadikan 1 PDF
           </button>
         </div>
 
-        <!-- Kontrol Saat Mengatur 4 Titik, Rotasi & Tambah Halaman Beruntun -->
+        <!-- Kontrol Saat Mengatur 4 Titik, Mode Warna & Tambah Halaman Beruntun -->
         <div id="cameraCropControls" class="hidden w-full flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div class="flex flex-wrap items-center gap-2">
             <button type="button" onclick="retakeCameraPhoto()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl">
@@ -552,7 +571,7 @@
               ✨ Auto 4-Sudut
             </button>
 
-            <!-- PILIHAN BEBAS MODE TAMPILAN HASIL SCAN -->
+            <!-- PILIHAN BEBAS MODE TAMPILAN WARNA HASIL SCAN -->
             <div class="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-700">
               <button type="button" onclick="setScanColorMode('color')" id="btnScanMode_color" class="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold bg-cyan-400 text-slate-950 transition">
                 🎨 Berwarna Asli
