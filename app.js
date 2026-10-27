@@ -1,5 +1,5 @@
 // =========================================================================
-// APP.JS - SMARTDOC STUDIO V8.5 (4-POINT PERSPECTIVE & COLOR/BW EDITION)
+// APP.JS - SMARTDOC STUDIO V9.0 (MAGNIFIER, ROTATE 90 & MULTI-PAGE SCAN PDF)
 // =========================================================================
 
 const GAS_WEB_APP_URL = "PASTE_URL_WEB_APP_GOOGLE_APPS_SCRIPT_ANDA";
@@ -237,14 +237,15 @@ window.addEventListener('offline', updateNetworkIndicator);
 window.addEventListener('load', () => { updateNetworkIndicator(); refreshOfflineQueueUI(); });
 
 // =========================================================================
-// 3. FITUR SCANNER 4-TITIK (PERSPECTIVE UNWARP) & PILIHAN WARNA / B&W
+// 3. FITUR SCANNER 4-TITIK + MAGNIFIER + ROTASI 90° + MULTI-PAGE KE 1 PDF
 // =========================================================================
 let cameraStream = null;
 let cameraFacing = 'environment';
 let scannerTargetDestination = 'queue';
-let scanColorMode = 'color'; // 'color' (Berwarna Asli) | 'magic' (Warna Tajam) | 'bw' (Hitam Putih)
+let scanColorMode = 'color'; // 'color' | 'magic' | 'bw'
+let currentScanRotation = 0; // 0 | 90 | 180 | 270
+let scannedPagesBatch = [];  // Menyimpan daftar halaman yang sudah dipindai dalam sesi ini
 
-// 4 Koordinat Sudut dalam rasio (0.0 - 1.0): [0: Kiri-Atas, 1: Kanan-Atas, 2: Kanan-Bawah, 3: Kiri-Bawah]
 let quadCorners = [
   { x: 0.10, y: 0.10 },
   { x: 0.90, y: 0.10 },
@@ -255,6 +256,10 @@ let activeCornerIndex = null;
 
 window.openCameraScanner = async (destination = 'queue') => {
   scannerTargetDestination = destination;
+  scannedPagesBatch = [];
+  currentScanRotation = 0;
+  updateBatchTrayUI();
+
   document.getElementById('cameraScannerModal').classList.remove('hidden');
   document.getElementById('cameraLiveStep').classList.remove('hidden');
   document.getElementById('cameraCropStep').classList.add('hidden');
@@ -289,7 +294,6 @@ window.closeCameraScanner = () => {
   document.getElementById('cameraScannerModal').classList.add('hidden');
 };
 
-// Ambil foto dari stream kamera
 window.captureCameraFrame = () => {
   const video = document.getElementById('cameraVideoEl');
   if (!video.videoWidth) return alert('Tunggu kamera siap atau pilih foto dari galeri.');
@@ -305,10 +309,10 @@ window.captureCameraFrame = () => {
     cameraStream = null;
   }
 
+  currentScanRotation = 0;
   enterFourPointCropMode();
 };
 
-// Opsi memilih foto miring dari galeri untuk diluruskan dengan 4 titik
 document.getElementById('scannerGalleryInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -324,6 +328,7 @@ document.getElementById('scannerGalleryInput').addEventListener('change', (e) =>
         cameraStream.getTracks().forEach(t => t.stop());
         cameraStream = null;
       }
+      currentScanRotation = 0;
       enterFourPointCropMode();
     };
     img.src = ev.target.result;
@@ -338,8 +343,8 @@ function enterFourPointCropMode() {
   document.getElementById('cameraLiveControls').classList.add('hidden');
   document.getElementById('cameraCropControls').classList.remove('hidden');
   document.getElementById('scannerStepSubtitle').textContent =
-    'Geser ke-4 titik biru ke keempat sudut dokumen yang miring, lalu pilih tampilan Berwarna atau Hitam-Putih.';
-
+    'Geser 4 titik sudut (dengan Kaca Pembesar), putar 90° jika miring, lalu tambah halaman atau jadikan 1 PDF.';
+  updateRotationBadgeText();
   window.autoDetectFourCorners();
 }
 
@@ -351,7 +356,23 @@ window.retakeCameraPhoto = async () => {
   await startCameraStream();
 };
 
-// Pilihan Mode Warna Hasil Scan (Berwarna Asli, Warna Tajam, Hitam-Putih)
+// FITUR PUTAR 90 DERAJAT (ROTATE KIRI / KANAN)
+window.rotateCurrentScan = (deltaDeg) => {
+  currentScanRotation = (currentScanRotation + deltaDeg + 360) % 360;
+  updateRotationBadgeText();
+  window.updateWarpedPreview();
+};
+
+function updateRotationBadgeText() {
+  const labels = {
+    0: '0° (Tegak Normal)',
+    90: '90° (Putar Kanan)',
+    180: '180° (Terbalik)',
+    270: '270° (Putar Kiri)'
+  };
+  document.getElementById('scanRotationBadge').textContent = labels[currentScanRotation] || `${currentScanRotation}°`;
+}
+
 window.setScanColorMode = (mode) => {
   scanColorMode = mode;
   ['color', 'magic', 'bw'].forEach(m => {
@@ -365,7 +386,7 @@ window.setScanColorMode = (mode) => {
   window.updateWarpedPreview();
 };
 
-// Algoritma Deteksi 4 Sudut Ekstrem Kertas Otomatis (4-Corner Extreme Point Finder)
+// Deteksi 4 Sudut Ekstrem Otomatis
 window.autoDetectFourCorners = () => {
   const canvas = document.getElementById('scannerRawCanvas');
   const ctx = canvas.getContext('2d');
@@ -379,15 +400,11 @@ window.autoDetectFourCorners = () => {
     for (let x = Math.floor(w * 0.04); x < Math.floor(w * 0.96); x += step) {
       const idx = (y * w + x) * 4;
       const lum = 0.299 * imgData[idx] + 0.587 * imgData[idx + 1] + 0.114 * imgData[idx + 2];
-      if (lum > 158) {
-        brightPoints.push({ x: x / w, y: y / h });
-      }
+      if (lum > 158) brightPoints.push({ x: x / w, y: y / h });
     }
   }
 
   if (brightPoints.length > 80) {
-    // Cari 4 titik ekstrem menggunakan metrik proyeksi sudut:
-    // TL: min(x + y), TR: max(x - y), BR: max(x + y), BL: min(x - y)
     let tl = brightPoints[0], tr = brightPoints[0], br = brightPoints[0], bl = brightPoints[0];
     let minSum = 999, maxSum = -999, minDiff = 999, maxDiff = -999;
 
@@ -400,7 +417,6 @@ window.autoDetectFourCorners = () => {
       if (diff < minDiff) { minDiff = diff; bl = pt; }
     }
 
-    // Validasi luas poligon agar tidak terlalu sempit
     const polyWidth = Math.hypot(tr.x - tl.x, tr.y - tl.y);
     const polyHeight = Math.hypot(bl.x - tl.x, bl.y - tl.y);
 
@@ -412,20 +428,10 @@ window.autoDetectFourCorners = () => {
         { x: Math.max(0.02, bl.x), y: Math.min(0.98, bl.y) }
       ];
     } else {
-      quadCorners = [
-        { x: 0.10, y: 0.10 },
-        { x: 0.90, y: 0.10 },
-        { x: 0.90, y: 0.90 },
-        { x: 0.10, y: 0.90 }
-      ];
+      quadCorners = [{ x: 0.1, y: 0.1 }, { x: 0.9, y: 0.1 }, { x: 0.9, y: 0.9 }, { x: 0.1, y: 0.9 }];
     }
   } else {
-    quadCorners = [
-      { x: 0.10, y: 0.10 },
-      { x: 0.90, y: 0.10 },
-      { x: 0.90, y: 0.90 },
-      { x: 0.10, y: 0.90 }
-    ];
+    quadCorners = [{ x: 0.1, y: 0.1 }, { x: 0.9, y: 0.1 }, { x: 0.9, y: 0.9 }, { x: 0.1, y: 0.9 }];
   }
 
   renderFourCornerPins();
@@ -443,7 +449,58 @@ function renderFourCornerPins() {
   });
 }
 
-// Interaksi Drag & Drop untuk Ke-4 Pin Sudut
+// =========================================================================
+// KACA PEMBESAR PRESISI (MAGNIFIER LOUPE) SAAT MENGGESER 4 TITIK SUDUT
+// =========================================================================
+function updateMagnifierLoupe(cornerIdx, ratioX, ratioY) {
+  const loupe = document.getElementById('magnifierLoupe');
+  const magCanvas = document.getElementById('magnifierCanvas');
+  const rawCanvas = document.getElementById('scannerRawCanvas');
+  const stageRect = document.getElementById('cropStageWrapper').getBoundingClientRect();
+
+  if (!rawCanvas.width) return;
+  loupe.classList.remove('hidden');
+
+  const cornerNames = ['1: Kiri-Atas', '2: Kanan-Atas', '3: Kanan-Bawah', '4: Kiri-Bawah'];
+  document.getElementById('magnifierCornerLabel').textContent = cornerNames[cornerIdx];
+
+  // Tempatkan kaca pembesar di atas jari (atau di bawah jika jari terlalu dekat ke tepi atas)
+  const pinPxX = ratioX * stageRect.width;
+  const pinPxY = ratioY * stageRect.height;
+  const loupeSize = 116;
+
+  let leftPos = pinPxX - loupeSize / 2;
+  let topPos = pinPxY - loupeSize - 26;
+  if (topPos < 4) topPos = pinPxY + 26; // Pindah ke bawah jika mentok atas
+  leftPos = Math.max(4, Math.min(leftPos, stageRect.width - loupeSize - 4));
+
+  loupe.style.left = `${leftPos}px`;
+  loupe.style.top = `${topPos}px`;
+
+  // Gambar area sekitar titik sudut dengan perbesaran 2.6x
+  const magCtx = magCanvas.getContext('2d');
+  const zoomFactor = 2.6;
+  const srcRadiusX = (magCanvas.width / zoomFactor) / 2;
+  const srcRadiusY = (magCanvas.height / zoomFactor) / 2;
+  const centerX = ratioX * rawCanvas.width;
+  const centerY = ratioY * rawCanvas.height;
+
+  magCtx.fillStyle = '#020617';
+  magCtx.fillRect(0, 0, magCanvas.width, magCanvas.height);
+
+  magCtx.drawImage(
+    rawCanvas,
+    centerX - srcRadiusX,
+    centerY - srcRadiusY,
+    srcRadiusX * 2,
+    srcRadiusY * 2,
+    0,
+    0,
+    magCanvas.width,
+    magCanvas.height
+  );
+}
+
 const cropStage = document.getElementById('cropStageWrapper');
 [0, 1, 2, 3].forEach(idx => {
   const pinEl = document.getElementById('cornerHandle_' + idx);
@@ -451,6 +508,7 @@ const cropStage = document.getElementById('cropStageWrapper');
     e.stopPropagation();
     activeCornerIndex = idx;
     pinEl.setPointerCapture(e.pointerId);
+    updateMagnifierLoupe(idx, quadCorners[idx].x, quadCorners[idx].y);
   });
 });
 
@@ -462,31 +520,31 @@ window.addEventListener('pointermove', (e) => {
 
   quadCorners[activeCornerIndex] = { x: nx, y: ny };
   renderFourCornerPins();
+  updateMagnifierLoupe(activeCornerIndex, nx, ny);
 });
 
 window.addEventListener('pointerup', () => {
   if (activeCornerIndex !== null) {
     activeCornerIndex = null;
+    document.getElementById('magnifierLoupe').classList.add('hidden');
     window.updateWarpedPreview();
   }
 });
 
 // =========================================================================
-// MESIN TRANSFORMASI 4-TITIK PERSPEKTIF (BILINEAR QUAD UNWARP) & FILTER WARNA
+// MESIN TRANSFORMASI 4-TITIK PERSPEKTIF + ROTASI 90 DERAJAT + FILTER WARNA
 // =========================================================================
-function performPerspectiveWarp(srcCanvas, cornersRatio, colorMode, maxOutputDim = 1400) {
+function performPerspectiveWarp(srcCanvas, cornersRatio, colorMode, rotationDeg = 0, maxOutputDim = 1400) {
   const sw = srcCanvas.width;
   const sh = srcCanvas.height;
   const srcCtx = srcCanvas.getContext('2d');
   const srcData = srcCtx.getImageData(0, 0, sw, sh).data;
 
-  // Konversi rasio sudut ke koordinat piksel asli
-  const p0 = { x: cornersRatio[0].x * sw, y: cornersRatio[0].y * sh }; // Kiri Atas (TL)
-  const p1 = { x: cornersRatio[1].x * sw, y: cornersRatio[1].y * sh }; // Kanan Atas (TR)
-  const p2 = { x: cornersRatio[2].x * sw, y: cornersRatio[2].y * sh }; // Kanan Bawah (BR)
-  const p3 = { x: cornersRatio[3].x * sw, y: cornersRatio[3].y * sh }; // Kiri Bawah (BL)
+  const p0 = { x: cornersRatio[0].x * sw, y: cornersRatio[0].y * sh };
+  const p1 = { x: cornersRatio[1].x * sw, y: cornersRatio[1].y * sh };
+  const p2 = { x: cornersRatio[2].x * sw, y: cornersRatio[2].y * sh };
+  const p3 = { x: cornersRatio[3].x * sw, y: cornersRatio[3].y * sh };
 
-  // Hitung lebar dan tinggi alami dari rata-rata sisi berhadapan
   const topW = Math.hypot(p1.x - p0.x, p1.y - p0.y);
   const botW = Math.hypot(p2.x - p3.x, p2.y - p3.y);
   const leftH = Math.hypot(p3.x - p0.x, p3.y - p0.y);
@@ -501,14 +559,13 @@ function performPerspectiveWarp(srcCanvas, cornersRatio, colorMode, maxOutputDim
     dstH = Math.max(100, Math.round(dstH * scale));
   }
 
-  const outCanvas = document.createElement('canvas');
-  outCanvas.width = dstW;
-  outCanvas.height = dstH;
-  const outCtx = outCanvas.getContext('2d');
-  const outImgData = outCtx.createImageData(dstW, dstH);
+  const baseCanvas = document.createElement('canvas');
+  baseCanvas.width = dstW;
+  baseCanvas.height = dstH;
+  const baseCtx = baseCanvas.getContext('2d');
+  const outImgData = baseCtx.createImageData(dstW, dstH);
   const dstData = outImgData.data;
 
-  // Pemetaan Bilinear 4-Titik (Meluruskan bidang miring ke persegi panjang tegak)
   for (let y = 0; y < dstH; y++) {
     const v = y / (dstH - 1 || 1);
     const invV = 1 - v;
@@ -517,7 +574,6 @@ function performPerspectiveWarp(srcCanvas, cornersRatio, colorMode, maxOutputDim
       const u = x / (dstW - 1 || 1);
       const invU = 1 - u;
 
-      // Koordinat sumber di dalam poligon 4 titik
       const srcX = invU * invV * p0.x + u * invV * p1.x + u * v * p2.x + invU * v * p3.x;
       const srcY = invU * invV * p0.y + u * invV * p1.y + u * v * p2.y + invU * v * p3.y;
 
@@ -531,18 +587,15 @@ function performPerspectiveWarp(srcCanvas, cornersRatio, colorMode, maxOutputDim
       let b = srcData[srcIdx + 2];
 
       if (colorMode === 'bw') {
-        // Mode Hitam-Putih Dokumen Kontras Tinggi
         const gray = 0.299 * r + 0.587 * g + 0.114 * b;
         let bwVal = ((gray - 128) * 1.45) + 140;
         bwVal = bwVal > 195 ? 255 : (bwVal < 65 ? 0 : bwVal);
         r = g = b = Math.max(0, Math.min(255, bwVal));
       } else if (colorMode === 'magic') {
-        // Mode Warna Tajam (Mencerahkan kertas tanpa menghilangkan warna stempel/tinta)
         r = Math.min(255, Math.max(0, ((r - 128) * 1.25) + 142));
         g = Math.min(255, Math.max(0, ((g - 128) * 1.25) + 142));
         b = Math.min(255, Math.max(0, ((b - 128) * 1.25) + 142));
       }
-      // Jika colorMode === 'color', r, g, b tetap murni seperti warna asli
 
       dstData[dstIdx] = r;
       dstData[dstIdx + 1] = g;
@@ -551,41 +604,142 @@ function performPerspectiveWarp(srcCanvas, cornersRatio, colorMode, maxOutputDim
     }
   }
 
-  outCtx.putImageData(outImgData, 0, 0);
-  return outCanvas;
+  baseCtx.putImageData(outImgData, 0, 0);
+
+  // Terapkan Rotasi 90 / 180 / 270 Derajat jika dipilih
+  const normRot = ((rotationDeg % 360) + 360) % 360;
+  if (normRot === 0) return baseCanvas;
+
+  const rotCanvas = document.createElement('canvas');
+  if (normRot === 90 || normRot === 270) {
+    rotCanvas.width = dstH;
+    rotCanvas.height = dstW;
+  } else {
+    rotCanvas.width = dstW;
+    rotCanvas.height = dstH;
+  }
+
+  const rotCtx = rotCanvas.getContext('2d');
+  rotCtx.translate(rotCanvas.width / 2, rotCanvas.height / 2);
+  rotCtx.rotate((normRot * Math.PI) / 180);
+  rotCtx.drawImage(baseCanvas, -dstW / 2, -dstH / 2);
+  return rotCanvas;
 }
 
 window.updateWarpedPreview = () => {
   const rawCanvas = document.getElementById('scannerRawCanvas');
   if (!rawCanvas.width) return;
 
-  // Render preview cepat dengan resolusi menengah (550px) agar responsif
-  const previewCanvas = performPerspectiveWarp(rawCanvas, quadCorners, scanColorMode, 550);
+  const previewCanvas = performPerspectiveWarp(rawCanvas, quadCorners, scanColorMode, currentScanRotation, 520);
   const targetPreview = document.getElementById('scannerWarpedPreviewCanvas');
   targetPreview.width = previewCanvas.width;
   targetPreview.height = previewCanvas.height;
   targetPreview.getContext('2d').drawImage(previewCanvas, 0, 0);
 };
 
-// Simpan hasil scan 4-titik dalam resolusi tinggi (1650px)
-window.applyCropAndSaveScan = async () => {
+// =========================================================================
+// FITUR SCAN MULTI-HALAMAN BERUNTUN LANGSUNG JADI 1 FILE PDF
+// =========================================================================
+function captureCurrentWarpedPageData() {
   const rawCanvas = document.getElementById('scannerRawCanvas');
-  const finalWarpedCanvas = performPerspectiveWarp(rawCanvas, quadCorners, scanColorMode, 1650);
+  const finalCanvas = performPerspectiveWarp(rawCanvas, quadCorners, scanColorMode, currentScanRotation, 1600);
+  return {
+    dataUrl: finalCanvas.toDataURL('image/jpeg', 0.88),
+    width: finalCanvas.width,
+    height: finalCanvas.height
+  };
+}
 
-  const scannedBlob = await new Promise(r => finalWarpedCanvas.toBlob(r, 'image/jpeg', 0.92));
-  const modeSuffix = scanColorMode === 'bw' ? 'BW' : (scanColorMode === 'magic' ? 'Tajam' : 'Warna');
-  const scannedFile = new File([scannedBlob], `Scan_${modeSuffix}_${Date.now()}.jpg`, { type: 'image/jpeg' });
+// Tombol "➕ Simpan & Scan Halaman Berikutnya"
+window.addCurrentScanAndContinue = async () => {
+  const pageData = captureCurrentWarpedPageData();
+  scannedPagesBatch.push(pageData);
+  updateBatchTrayUI();
+  await window.retakeCameraPhoto();
+};
 
+window.removeBatchPage = (idx) => {
+  scannedPagesBatch.splice(idx, 1);
+  updateBatchTrayUI();
+};
+
+function updateBatchTrayUI() {
+  const count = scannedPagesBatch.length;
+  document.getElementById('batchScanCountBadge').textContent = `${count} Halaman Tersimpan`;
+  document.getElementById('trayPageCounter').textContent = count;
+
+  const tray = document.getElementById('multiPageScanTray');
+  const list = document.getElementById('trayThumbnailsList');
+  const btnFinishLive = document.getElementById('btnFinishBatchFromLive');
+  const btnFinishLabel = document.getElementById('btnFinishScanLabel');
+
+  if (count > 0) {
+    tray.classList.remove('hidden');
+    btnFinishLive.classList.remove('hidden');
+    btnFinishLive.textContent = `📑 Selesai & Jadikan 1 PDF (${count} Hal)`;
+    btnFinishLabel.textContent = `Selesai & Gabung Jadi 1 PDF (${count + 1} Hal)`;
+  } else {
+    tray.classList.add('hidden');
+    btnFinishLive.classList.add('hidden');
+    btnFinishLabel.textContent = 'Selesai & Jadikan 1 PDF';
+  }
+
+  list.innerHTML = scannedPagesBatch.map((p, i) => `
+    <div class="relative group shrink-0 w-14 h-18 rounded-lg overflow-hidden border border-cyan-400 bg-slate-950">
+      <img src="${p.dataUrl}" class="w-full h-16 object-cover" alt="Hal ${i + 1}">
+      <span class="absolute bottom-0 inset-x-0 bg-slate-950/80 text-[9px] font-bold text-center text-cyan-300">Hal ${i + 1}</span>
+      <button type="button" onclick="removeBatchPage(${i})" class="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full w-4 h-4 text-[9px] font-bold flex items-center justify-center">✕</button>
+    </div>
+  `).join('');
+}
+
+// Rakit seluruh halaman yang dipindai menjadi 1 file PDF utuh
+window.finishBatchScanAsSinglePdf = async (includeCurrentCropStep = false) => {
+  if (includeCurrentCropStep) {
+    const currentData = captureCurrentWarpedPageData();
+    scannedPagesBatch.push(currentData);
+  }
+
+  if (scannedPagesBatch.length === 0) {
+    return alert('Belum ada halaman yang dipindai.');
+  }
+
+  const { jsPDF } = window.jspdf;
+  let pdfDoc = null;
+
+  scannedPagesBatch.forEach((p, idx) => {
+    const wPt = p.width * 0.75;
+    const hPt = p.height * 0.75;
+    const orient = wPt > hPt ? 'l' : 'p';
+
+    if (idx === 0) {
+      pdfDoc = new jsPDF({ orientation: orient, unit: 'pt', format: [wPt, hPt], compress: true });
+    } else {
+      pdfDoc.addPage([wPt, hPt], orient);
+    }
+    pdfDoc.addImage(p.dataUrl, 'JPEG', 0, 0, wPt, hPt, undefined, 'FAST');
+  });
+
+  const pdfBlob = pdfDoc.output('blob');
+  const totalPagesCount = scannedPagesBatch.length;
+  const scannedPdfFile = new File(
+    [pdfBlob],
+    `Scan_Dokumen_${totalPagesCount}Hal_${Date.now()}.pdf`,
+    { type: 'application/pdf' }
+  );
+
+  scannedPagesBatch = [];
+  updateBatchTrayUI();
   window.closeCameraScanner();
 
   if (scannerTargetDestination === 'ocr') {
     window.switchMode('ocr');
     const dt = new DataTransfer();
-    dt.items.add(scannedFile);
+    dt.items.add(scannedPdfFile);
     document.getElementById('ocrFileInput').files = dt.files;
     document.getElementById('btnStartOcr').click();
   } else {
-    await addFilesToQueue([scannedFile]);
+    await addFilesToQueue([scannedPdfFile]);
   }
 };
 
@@ -850,7 +1004,7 @@ window.exportOcrToDocx = async () => {
 
 document.getElementById('btnStartOcr').addEventListener('click', async () => {
   const file = document.getElementById('ocrFileInput').files[0];
-  if (!file) return alert('Pilih file atau gunakan tombol Foto 4-Titik untuk OCR terlebih dahulu.');
+  if (!file) return alert('Pilih file atau gunakan tombol Scan Kamera untuk OCR terlebih dahulu.');
 
   const lang = document.getElementById('ocrLang').value;
   const rangeStr = document.getElementById('ocrPageRange').value;
@@ -981,7 +1135,7 @@ window.downloadUploadReceiptPdf = (customData = null) => {
   doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
   doc.text('KARTU BUKTI PENGUMPULAN DOKUMEN DIGITAL', 15, 18);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-  doc.text('SmartDoc Studio v8.5 - Tanda Terima Resmi Penyimpanan Cloud & Riwayat', 15, 27);
+  doc.text('SmartDoc Studio v9.0 - Tanda Terima Resmi Penyimpanan Cloud & Riwayat', 15, 27);
 
   doc.setFillColor(238, 242, 255); doc.setDrawColor(165, 180, 252);
   doc.roundedRect(15, 46, 180, 24, 3, 3, 'FD');
@@ -1164,7 +1318,7 @@ function renderQueueUI() {
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-xs font-extrabold text-indigo-600">#${index + 1}</span>
               <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full ${badgeColor}">
-                ${item.type === 'image' ? 'GAMBAR / SCAN' : `PDF (${item.totalPages} Hal)`}
+                ${item.type === 'image' ? 'GAMBAR' : `PDF (${item.totalPages} Hal)`}
               </span>
               <h4 class="font-bold text-sm text-slate-800 truncate">${item.file.name}</h4>
             </div>
