@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartdoc-modular-v13';
+const CACHE_NAME = 'smartdoc-modular-v14';
 const ASSETS_TO_CACHE = [
 './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS_TO_CACHE = [
   './js/scanner.js',
   './js/processor.js',
   './js/ocr.js',
+  './js/splitter.js',
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
@@ -17,7 +18,8 @@ const ASSETS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
   'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',
   'https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.min.js',
-  'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'
+  'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js',
+  'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js'
 ];
 
 self.addEventListener('install', (event) => {
