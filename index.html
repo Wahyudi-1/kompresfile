@@ -70,7 +70,7 @@
             <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight">SmartDoc Studio</h1>
             <span class="px-2.5 py-0.5 text-[10px] font-extrabold uppercase bg-cyan-400 text-slate-950 rounded-full shadow">Wahyudi</span>
           </div>
-          <p class="text-indigo-100 text-xs sm:text-sm mt-1">Kompres PDF, GIF & Semua Gambar, Potong PDF, Scanner 4-Titik (A4/Folio), Drag TTD & OCR Word.</p>
+          <p class="text-indigo-100 text-xs sm:text-sm mt-1">Kompres PDF, GIF & Semua Gambar, Potong & Edit Isi PDF, Scanner 4-Titik (A4/Folio), Drag TTD & OCR Word.</p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <button type="button" onclick="openCameraScanner('queue')" class="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition flex items-center gap-1.5">
@@ -83,30 +83,33 @@
         </div>
       </div>
 
-      <!-- 6 TAB MENU MODE KERJA -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 bg-slate-100 p-1.5 gap-1.5 border-b border-slate-200">
-        <button type="button" onclick="switchMode('local')" id="tab_local" class="py-3 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-indigo-700 shadow-sm">
+      <!-- 7 TAB MENU MODE KERJA -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 bg-slate-100 p-1.5 gap-1.5 border-b border-slate-200">
+        <button type="button" onclick="switchMode('local')" id="tab_local" class="py-3 px-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 bg-white text-indigo-700 shadow-sm">
           <span>📥</span> 1. Kompres
         </button>
-        <button type="button" onclick="switchMode('merge')" id="tab_merge" class="py-3 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60">
-          <span>📑</span> 2. Gabung PDF
+        <button type="button" onclick="switchMode('merge')" id="tab_merge" class="py-3 px-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 text-slate-600 hover:bg-white/60">
+          <span>📑</span> 2. Gabung
         </button>
-        <button type="button" onclick="switchMode('split')" id="tab_split" class="py-3 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60">
-          <span>✂️</span> 3. Potong PDF
+        <button type="button" onclick="switchMode('split')" id="tab_split" class="py-3 px-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 text-slate-600 hover:bg-white/60">
+          <span>✂️</span> 3. Potong
         </button>
-        <button type="button" onclick="switchMode('ocr')" id="tab_ocr" class="py-3 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60">
-          <span>🔤</span> 4. OCR Word
+        <button type="button" onclick="switchMode('edit')" id="tab_edit" class="py-3 px-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 text-slate-600 hover:bg-white/60">
+          <span>✏️</span> 4. Edit PDF
         </button>
-        <button type="button" onclick="switchMode('cloud')" id="tab_cloud" class="py-3 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60">
-          <span>☁️</span> 5. Ke Drive
+        <button type="button" onclick="switchMode('ocr')" id="tab_ocr" class="py-3 px-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 text-slate-600 hover:bg-white/60">
+          <span>🔤</span> 5. OCR Word
         </button>
-        <button type="button" onclick="switchMode('history')" id="tab_history" class="py-3 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60">
-          <span>🔍</span> 6. Riwayat
+        <button type="button" onclick="switchMode('cloud')" id="tab_cloud" class="py-3 px-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 text-slate-600 hover:bg-white/60">
+          <span>☁️</span> 6. Ke Drive
+        </button>
+        <button type="button" onclick="switchMode('history')" id="tab_history" class="col-span-2 sm:col-span-1 py-3 px-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 text-slate-600 hover:bg-white/60">
+          <span>🔍</span> 7. Riwayat
         </button>
       </div>
 
       <!-- =============================================================== -->
-      <!-- WORKSPACE UTAMA (UNTUK TAB 1: KOMPRES, 2: GABUNG, 5: KE DRIVE)  -->
+      <!-- WORKSPACE UTAMA (UNTUK TAB 1: KOMPRES, 2: GABUNG, 6: KE DRIVE)  -->
       <!-- =============================================================== -->
       <div id="workspaceArea" class="p-4 sm:p-6 space-y-6">
         
@@ -117,7 +120,7 @@
           </div>
         </div>
 
-        <!-- FORM IDENTITAS & KODE AKSES (MUNCUL DI TAB 5: CLOUD DRIVE) -->
+        <!-- FORM IDENTITAS & KODE AKSES (MUNCUL DI TAB 6: CLOUD DRIVE) -->
         <div id="cloudIdentitySection" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 bg-indigo-50/60 p-4 rounded-xl border border-indigo-200">
           <div>
             <label class="block text-xs font-bold uppercase text-indigo-900 mb-1">Nama Lengkap Pengirim *</label>
@@ -325,10 +328,9 @@
           </div>
         </div>
 
-        <!-- Panel Kerja Pemotong PDF (Muncul Setelah File Dipilih) -->
+        <!-- Panel Kerja Pemotong PDF -->
         <div id="splitWorkspacePanel" class="hidden space-y-5">
           
-          <!-- Info File & Preset Pilihan Cepat -->
           <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <div class="flex items-center gap-2">
@@ -346,7 +348,6 @@
             </div>
           </div>
 
-          <!-- Input Rentang Halaman & Pengaturan Output -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Halaman yang Diambil (Ketik / Klik Kartu):</label>
@@ -367,7 +368,6 @@
             </div>
           </div>
 
-          <!-- Kotak Hasil Pemotongan PDF -->
           <div id="splitResultBox" class="hidden p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-500 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <span class="px-2.5 py-0.5 text-[11px] font-extrabold uppercase rounded-full bg-emerald-200 text-emerald-900">PDF Berhasil Dipotong</span>
@@ -384,14 +384,150 @@
             </div>
           </div>
 
-          <!-- Grid Thumbnail Halaman PDF untuk Dipilih Secara Visual -->
           <div id="splitThumbnailsGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 max-h-[55vh] overflow-y-auto p-2 bg-slate-100/70 rounded-2xl border border-slate-200"></div>
 
         </div>
       </div>
 
       <!-- =============================================================== -->
-      <!-- TAB 4: KONVERSI OCR (SCAN KAMERA / PDF KE WORD .DOCX & PDF)     -->
+      <!-- TAB 4: EDIT ISI PDF (VISUAL OVERLAY + EDIT TEKS PARAGRAF)       -->
+      <!-- =============================================================== -->
+      <div id="editPdfArea" class="hidden p-4 sm:p-6 space-y-6">
+        <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-indigo-950">✏️ Edit Isi Dokumen PDF (Visual Overlay & Paragraf)</h2>
+            <p class="text-xs text-indigo-700 mt-0.5">Gunakan <b>Visual Editor</b> untuk menutup teks salah (Whiteout), menambah teks/centang/gambar, atau beralih ke <b>Editor Paragraf</b> untuk mengedit susunan kalimat.</p>
+          </div>
+          <label class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-extrabold rounded-xl shadow cursor-pointer transition shrink-0 text-center">
+            📂 Pilih File PDF yang Akan Diedit
+            <input type="file" id="editPdfInput" accept="application/pdf" class="hidden">
+          </label>
+        </div>
+
+        <!-- Panel Kerja Editor PDF -->
+        <div id="editWorkspacePanel" class="hidden space-y-5">
+          
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" id="btnSubEdit_visual" onclick="switchPdfEditSubMode('visual')" class="px-4 py-2 rounded-xl text-xs font-extrabold bg-indigo-600 text-white shadow transition">
+                🎨 Mode 1: Visual Editor (Whiteout, Teks & Gambar)
+              </button>
+              <button type="button" id="btnSubEdit_paragraph" onclick="switchPdfEditSubMode('paragraph')" class="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition">
+                📝 Mode 2: Ekstrak & Edit Teks Paragraf
+              </button>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <span id="editFileNameDisplay" class="text-xs font-bold text-slate-600 truncate max-w-[180px]">dokumen.pdf</span>
+              <input type="text" id="editExportFileName" value="Dokumen_Diedit" class="px-3 py-1.5 text-xs font-semibold border border-slate-300 rounded-lg bg-white outline-none">
+              <button type="button" id="btnSaveEditedPdf" onclick="saveEditedPdfDocument()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow transition">
+                💾 Simpan & Buat PDF Hasil Edit
+              </button>
+            </div>
+          </div>
+
+          <div id="editResultBox" class="hidden p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-500 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span class="px-2.5 py-0.5 text-[11px] font-extrabold uppercase rounded-full bg-emerald-200 text-emerald-900">PDF Berhasil Diperbarui</span>
+              <h4 id="editResultTitle" class="text-base font-extrabold text-slate-900 mt-1">Dokumen_Diedit.pdf</h4>
+              <p id="editResultMeta" class="text-xs text-slate-600 mt-0.5"></p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="downloadEditedPdfResult()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition">
+                ⬇️ Unduh PDF Hasil Edit
+              </button>
+              <button type="button" onclick="sendEditedPdfToCompressor()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition">
+                ⚡ Lanjut ke Kompresi / TTD / Drive
+              </button>
+            </div>
+          </div>
+
+          <!-- SUB-MODE 1: VISUAL EDITOR -->
+          <div id="visualEditorContainer" class="space-y-4">
+            <div class="bg-slate-900 text-white p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" onclick="addQuickWhiteout()" class="px-3 py-2 bg-white text-slate-950 hover:bg-slate-200 text-xs font-extrabold rounded-xl shadow transition">
+                  ⬜ Tambah Whiteout (Penghapus)
+                </button>
+                <button type="button" onclick="addQuickText()" class="px-3 py-2 bg-cyan-400 text-slate-950 hover:bg-cyan-300 text-xs font-extrabold rounded-xl shadow transition">
+                  🔤 Tambah Teks Baru
+                </button>
+                <button type="button" onclick="addQuickCheckmark()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold rounded-xl transition">
+                  ✓ Centang Formulir
+                </button>
+                <label class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold rounded-xl cursor-pointer transition">
+                  🖼️ Sisipkan Gambar / Logo
+                  <input type="file" id="editorInsertImgInput" accept="image/*" class="hidden">
+                </label>
+              </div>
+
+              <div class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-xl">
+                <button type="button" id="btnEditPrevPage" onclick="changeEditorPage(-1)" class="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold disabled:opacity-40">◀</button>
+                <span id="editPageIndicator" class="text-xs font-bold text-cyan-300">Halaman 1 dari 1</span>
+                <button type="button" id="btnEditNextPage" onclick="changeEditorPage(1)" class="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold disabled:opacity-40">▶</button>
+              </div>
+            </div>
+
+            <!-- Inspector Properti Elemen Terpilih -->
+            <div id="editorElementInspector" class="hidden bg-indigo-50 border border-indigo-200 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3">
+              <div id="inspectorTextControls" class="hidden flex flex-wrap items-center gap-2.5 flex-1">
+                <input type="text" id="editTextContentInput" oninput="updateSelectedAnnotationProp('text', this.value)" placeholder="Ketik isi teks..." class="px-3 py-1.5 text-xs font-semibold border border-indigo-300 rounded-lg bg-white flex-1 min-w-[200px]">
+                <div class="flex items-center gap-1.5">
+                  <label class="text-[11px] font-bold text-slate-700">Ukuran:</label>
+                  <input type="number" id="editTextSizeInput" min="6" max="72" value="13" onchange="updateSelectedAnnotationProp('fontSize', parseInt(this.value, 10))" class="w-16 px-2 py-1.5 text-xs font-bold border border-indigo-300 rounded-lg bg-white">
+                </div>
+                <input type="color" id="editTextColorInput" value="#0f172a" onchange="updateSelectedAnnotationProp('color', this.value)" class="w-8 h-8 rounded cursor-pointer border border-slate-300" title="Warna Teks">
+                <label class="flex items-center gap-1 text-xs font-bold text-slate-800 bg-white px-2.5 py-1.5 rounded-lg border border-indigo-200 cursor-pointer">
+                  <input type="checkbox" id="editTextBoldInput" onchange="updateSelectedAnnotationProp('bold', this.checked)">
+                  <span>Tebal (B)</span>
+                </label>
+              </div>
+
+              <div id="inspectorWhiteoutControls" class="hidden flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-700">Warna Blok / Simbol:</span>
+                <input type="color" id="editWhiteoutColorInput" value="#ffffff" onchange="updateSelectedAnnotationProp('bgColor', this.value); updateSelectedAnnotationProp('color', this.value);" class="w-8 h-8 rounded cursor-pointer border border-slate-300">
+              </div>
+
+              <div class="flex items-center gap-2 shrink-0">
+                <button type="button" onclick="deleteSelectedAnnotation()" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition">
+                  🗑️ Hapus Elemen Ini
+                </button>
+                <button type="button" onclick="clearCurrentPageAnnotations()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition">
+                  Reset Halaman
+                </button>
+              </div>
+            </div>
+
+            <div class="p-4 bg-slate-200/80 rounded-2xl border border-slate-300 overflow-auto flex justify-center max-h-[68vh]">
+              <div id="pdfEditStage" class="relative inline-block shadow-2xl bg-white border border-slate-400">
+                <canvas id="pdfEditBaseCanvas" class="block max-w-full h-auto"></canvas>
+                <div id="pdfEditOverlayLayer" class="absolute inset-0 overflow-hidden"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-MODE 2: EDITOR TEKS PARAGRAF -->
+          <div id="paragraphEditorContainer" class="hidden space-y-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+              <div>
+                <h3 class="font-bold text-sm text-slate-800">Editor Paragraf Dokumen (Teks Otomatis Bergeser Rapi)</h3>
+                <p class="text-xs text-slate-500">Ubah kalimat atau susunan paragraf di bawah ini, lalu klik Simpan & Buat PDF Hasil Edit.</p>
+              </div>
+              <div class="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl">
+                <button type="button" id="btnParaPrevPage" onclick="changeEditorPage(-1)" class="px-2.5 py-1 bg-white border border-slate-300 rounded text-xs font-bold disabled:opacity-40">◀</button>
+                <span id="editParaPageIndicator" class="text-xs font-bold text-indigo-700">Halaman 1 dari 1</span>
+                <button type="button" id="btnParaNextPage" onclick="changeEditorPage(1)" class="px-2.5 py-1 bg-white border border-slate-300 rounded text-xs font-bold disabled:opacity-40">▶</button>
+              </div>
+            </div>
+
+            <textarea id="pdfParagraphTextarea" rows="14" class="w-full p-4 border border-slate-300 rounded-xl text-xs sm:text-sm font-sans leading-relaxed focus:ring-2 focus:ring-indigo-500 outline-none select-text"></textarea>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- TAB 5: KONVERSI OCR (SCAN KAMERA / PDF KE WORD .DOCX & PDF)     -->
       <!-- =============================================================== -->
       <div id="ocrArea" class="hidden p-4 sm:p-6 space-y-6">
         <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 space-y-4">
@@ -469,7 +605,7 @@
       </div>
 
       <!-- =============================================================== -->
-      <!-- TAB 6: RIWAYAT CLOUD & MANAJEMEN ANTREAN OFFLINE INDEXEDDB      -->
+      <!-- TAB 7: RIWAYAT CLOUD & MANAJEMEN ANTREAN OFFLINE INDEXEDDB      -->
       <!-- =============================================================== -->
       <div id="historyArea" class="hidden p-4 sm:p-6 space-y-6">
         
@@ -578,7 +714,6 @@
         <!-- Kolom Kanan: Pratinjau Hasil Lurus + Pilihan Rasio Kertas (A4/Folio/Bebas) + Rotasi -->
         <div class="flex flex-col items-center justify-center space-y-2.5">
           
-          <!-- Baris Kontrol Atas: Putar 90° & Pilihan Rasio Kertas -->
           <div class="w-full max-w-md space-y-2 bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">2. Ukuran Rasio Kertas:</span>
@@ -608,7 +743,6 @@
             </div>
           </div>
 
-          <!-- Kanvas Pratinjau Hasil Akhir -->
           <div class="border-2 border-emerald-500/60 rounded-xl overflow-hidden bg-slate-900 shadow-xl p-1.5 flex items-center justify-center min-h-[190px]">
             <canvas id="scannerWarpedPreviewCanvas" class="block max-w-full max-h-[36vh] object-contain rounded"></canvas>
           </div>
@@ -658,7 +792,6 @@
               ✨ Auto 4-Sudut
             </button>
 
-            <!-- PILIHAN BEBAS MODE TAMPILAN WARNA HASIL SCAN -->
             <div class="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-700">
               <button type="button" onclick="setScanColorMode('color')" id="btnScanMode_color" class="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold bg-cyan-400 text-slate-950 transition">
                 🎨 Berwarna Asli
@@ -672,7 +805,6 @@
             </div>
           </div>
 
-          <!-- Tombol Aksi Simpan: Tambah Halaman Beruntun vs Selesai Jadi 1 PDF -->
           <div class="flex flex-wrap items-center gap-2 shrink-0">
             <button type="button" onclick="addCurrentScanAndContinue()" class="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1">
               <span>➕</span> Simpan & Scan Halaman Berikutnya
@@ -762,7 +894,7 @@
     </div>
   </div>
 
-  <!-- PEMANGGILAN 7 MODUL JAVASCRIPT TERPISAH DI FOLDER JS/ -->
+  <!-- PEMANGGILAN 8 MODUL JAVASCRIPT TERPISAH DI FOLDER JS/ -->
   <script src="js/state.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/signature.js"></script>
@@ -770,5 +902,6 @@
   <script src="js/processor.js"></script>
   <script src="js/ocr.js"></script>
   <script src="js/splitter.js"></script>
+  <script src="js/editor.js"></script>
 </body>
 </html>
