@@ -11,7 +11,7 @@ if (window.pdfjsLib) {
 
 // State Global Lintas Modul
 window.AppState = {
-  currentMode: 'local', // 'local' | 'merge' | 'split' | 'ocr' | 'cloud' | 'history'
+  currentMode: 'local', // 'local' | 'merge' | 'split' | 'edit' | 'ocr' | 'cloud' | 'history'
   fileQueue: [],
   mergedPdfBlob: null,
   mergedTotalPages: 0,
@@ -159,30 +159,36 @@ window.toggleFuturisticTheme = () => {
 };
 
 // =========================================================================
-// NAVIGASI 6 TAB MENU UTAMA
+// NAVIGASI 7 TAB MENU UTAMA
 // =========================================================================
 window.switchMode = (mode) => {
   AppState.currentMode = mode;
-  ['local', 'merge', 'split', 'ocr', 'cloud', 'history'].forEach(m => {
+  ['local', 'merge', 'split', 'edit', 'ocr', 'cloud', 'history'].forEach(m => {
     const btn = document.getElementById('tab_' + m);
     if (!btn) return;
     btn.className = m === mode
-      ? "py-3 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-indigo-700 shadow-sm"
-      : "py-3 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:bg-white/60";
+      ? "py-3 px-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 bg-white text-indigo-700 shadow-sm"
+      : "py-3 px-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 text-slate-600 hover:bg-white/60";
   });
 
   const workspaceArea = document.getElementById('workspaceArea');
   const splitArea = document.getElementById('splitPdfArea');
+  const editArea = document.getElementById('editPdfArea');
   const ocrArea = document.getElementById('ocrArea');
   const historyArea = document.getElementById('historyArea');
 
   if (workspaceArea) workspaceArea.classList.add('hidden');
   if (splitArea) splitArea.classList.add('hidden');
+  if (editArea) editArea.classList.add('hidden');
   if (ocrArea) ocrArea.classList.add('hidden');
   if (historyArea) historyArea.classList.add('hidden');
 
   if (mode === 'split') {
     if (splitArea) splitArea.classList.remove('hidden');
+    return;
+  }
+  if (mode === 'edit') {
+    if (editArea) editArea.classList.remove('hidden');
     return;
   }
   if (mode === 'ocr') {
