@@ -4,6 +4,8 @@ const ASSETS_TO_CACHE = [
   './index.html',
   './style.css',
   './manifest.json',
+  
+  // 8 Modul JavaScript di folder js/
   './js/state.js',
   './js/storage.js',
   './js/signature.js',
@@ -11,6 +13,9 @@ const ASSETS_TO_CACHE = [
   './js/processor.js',
   './js/ocr.js',
   './js/splitter.js',
+  './js/editor.js',
+
+  // Pustaka Eksternal (CDN) untuk Kompresi, PDF, GIF, HEIC, OCR & Word
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
